@@ -5,7 +5,8 @@
       "name": "gym-dev",
       "runtimeExecutable": "corepack",
       "runtimeArgs": ["pnpm", "dev"],
-      "port": 3000
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }

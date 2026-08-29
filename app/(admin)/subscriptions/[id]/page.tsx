@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, FileText, RefreshCw } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { labelFor } from "@/lib/enquiries/types";
 import { durationLabel } from "@/lib/plans/types";
@@ -53,10 +53,11 @@ export default async function SubscriptionDetailPage({ params }: { params: Promi
   const member = record.members;
   const displayStatus = deriveSubscriptionStatus(record);
 
-  const [{ data: events }, { data: payments }, { data: renewal }] = await Promise.all([
+  const [{ data: events }, { data: payments }, { data: renewal }, { data: invoice }] = await Promise.all([
     supabaseAdmin.from("subscription_events").select("*").eq("subscription_id", id).order("created_at", { ascending: false }),
     supabaseAdmin.from("member_payments").select("*").eq("subscription_id", id).order("payment_date", { ascending: false }),
     supabaseAdmin.from("member_subscriptions").select("id, plan_name, start_date").eq("renewed_from_id", id).maybeSingle(),
+    supabaseAdmin.from("invoices").select("id, invoice_number").eq("subscription_id", id).maybeSingle(),
   ]);
 
   return (
@@ -77,14 +78,24 @@ export default async function SubscriptionDetailPage({ params }: { params: Promi
           </div>
         </div>
 
-        {member && displayStatus !== "cancelled" && (
-          <Link
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#111c19] px-5 py-3 text-sm font-extrabold text-white shadow-xl shadow-[#111c19]/15"
-            href={`/subscriptions/new?memberId=${member.id}&renewedFromId=${record.id}`}
-          >
-            <RefreshCw size={16} /> Renew
-          </Link>
-        )}
+        <div className="flex items-center gap-3">
+          {invoice && (
+            <Link
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#e5e9e5] bg-white px-5 py-3 text-sm font-extrabold text-[#0f1816]"
+              href={`/invoices/${invoice.id}`}
+            >
+              <FileText size={16} /> {invoice.invoice_number}
+            </Link>
+          )}
+          {member && displayStatus !== "cancelled" && (
+            <Link
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#111c19] px-5 py-3 text-sm font-extrabold text-white shadow-xl shadow-[#111c19]/15"
+              href={`/subscriptions/new?memberId=${member.id}&renewedFromId=${record.id}`}
+            >
+              <RefreshCw size={16} /> Renew
+            </Link>
+          )}
+        </div>
       </div>
 
       {renewal && (

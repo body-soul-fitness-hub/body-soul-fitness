@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Pencil, Plus, UserCircle } from "lucide-react";
+import { ArrowLeft, Download, MessageCircle, Pencil, Plus, UserCircle } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getMemberPhotoUrl } from "@/lib/members/photo";
 import { MEMBER_STATUSES, type Member, type MemberCheckin, type MemberNote, type MemberNotification, type MemberStatusChange } from "@/lib/members/types";
 import { GENDERS, WORKOUT_TIMES, calculateAge, labelFor } from "@/lib/enquiries/types";
-import { deriveSubscriptionStatus, SUBSCRIPTION_DISPLAY_STATUSES, type MemberPayment, type MemberSubscription } from "@/lib/subscriptions/types";
+import { deriveSubscriptionStatus, PAYMENT_STATUSES, SUBSCRIPTION_DISPLAY_STATUSES, type MemberPayment, type MemberSubscription } from "@/lib/subscriptions/types";
+import { buildInvoiceWhatsAppLink, type Invoice } from "@/lib/invoices/types";
 import { NoteForm, StatusChangeForm } from "./detail-forms";
 
 function statusTone(status: string): string {
@@ -50,6 +51,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     { data: member, error },
     { data: subscriptions },
     { data: payments },
+    { data: invoices },
     { data: checkins },
     { data: notifications },
     { data: notes },
@@ -58,6 +60,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     supabaseAdmin.from("members").select("*").eq("id", id).maybeSingle(),
     supabaseAdmin.from("member_subscriptions").select("*").eq("member_id", id).order("start_date", { ascending: false }),
     supabaseAdmin.from("member_payments").select("*").eq("member_id", id).order("payment_date", { ascending: false }),
+    supabaseAdmin.from("invoices").select("*").eq("member_id", id).order("issue_date", { ascending: false }),
     supabaseAdmin.from("member_checkins").select("*").eq("member_id", id).order("checked_in_at", { ascending: false }).limit(50),
     supabaseAdmin.from("member_notifications").select("*").eq("member_id", id).order("sent_at", { ascending: false }).limit(50),
     supabaseAdmin.from("member_notes").select("*").eq("member_id", id).order("created_at", { ascending: false }),
@@ -136,6 +139,12 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
               </Link>
             </div>
             <SubscriptionsTable subscriptions={(subscriptions ?? []) as MemberSubscription[]} />
+          </section>
+
+          <section className="rounded-3xl border border-[#e5e9e5] bg-white p-6">
+            <p className="text-sm font-extrabold">Invoices</p>
+            <p className="mt-1 text-xs font-medium text-[#89938f]">Every bill generated for this member's subscriptions.</p>
+            <InvoicesTable invoices={(invoices ?? []) as Invoice[]} member={record} />
           </section>
 
           <section className="rounded-3xl border border-[#e5e9e5] bg-white p-6">
@@ -255,6 +264,74 @@ function SubscriptionsTable({ subscriptions }: { subscriptions: MemberSubscripti
                 </tr>
               );
             })
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function paymentStatusTone(status: string): string {
+  switch (status) {
+    case "paid":
+      return "bg-[#e7f7c5] text-[#4f6d1e]";
+    case "partial":
+      return "bg-[#ffe9c7] text-[#8a5a12]";
+    default:
+      return "bg-[#ffe5dc] text-[#a94f37]";
+  }
+}
+
+function InvoicesTable({ invoices, member }: { invoices: Invoice[]; member: Member }) {
+  return (
+    <div className="mt-4 overflow-x-auto">
+      <table className="w-full min-w-[720px] text-left text-sm">
+        <thead>
+          <tr className="border-b border-[#f0f2f0] text-xs font-extrabold uppercase tracking-wide text-[#89938f]">
+            <th className="py-2.5 pr-4">Invoice</th>
+            <th className="py-2.5 pr-4">Date</th>
+            <th className="py-2.5 pr-4">Plan</th>
+            <th className="py-2.5 pr-4">Total</th>
+            <th className="py-2.5 pr-4">Paid</th>
+            <th className="py-2.5 pr-4">Balance</th>
+            <th className="py-2.5">Status</th>
+            <th className="py-2.5" />
+          </tr>
+        </thead>
+        <tbody>
+          {invoices.length === 0 ? (
+            <EmptyRow colSpan={8} label="No invoices generated yet." />
+          ) : (
+            invoices.map((invoice) => (
+              <tr className="border-b border-[#f0f2f0] last:border-0" key={invoice.id}>
+                <td className="py-2.5 pr-4 font-mono text-xs font-extrabold text-[#577c25]">{invoice.invoice_number}</td>
+                <td className="py-2.5 pr-4 text-[#3a4542]">{invoice.issue_date}</td>
+                <td className="py-2.5 pr-4 font-bold">{invoice.plan_name ?? "—"}</td>
+                <td className="py-2.5 pr-4 text-[#3a4542]">{formatAmount(invoice.total_amount, invoice.currency)}</td>
+                <td className="py-2.5 pr-4 text-[#3a4542]">{formatAmount(invoice.amount_paid, invoice.currency)}</td>
+                <td className="py-2.5 pr-4 text-[#3a4542]">{formatAmount(invoice.balance_due, invoice.currency)}</td>
+                <td className="py-2.5">
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${paymentStatusTone(invoice.status)}`}>{labelFor(PAYMENT_STATUSES, invoice.status)}</span>
+                </td>
+                <td className="py-2.5 text-right">
+                  <div className="flex items-center justify-end gap-3">
+                    <Link className="text-xs font-extrabold text-[#577c25]" href={`/invoices/${invoice.id}`}>View</Link>
+                    <a className="inline-flex items-center gap-1 text-xs font-extrabold text-[#577c25]" href={`/invoices/${invoice.id}/pdf`} title="Download PDF">
+                      <Download size={13} />
+                    </a>
+                    <a
+                      className="inline-flex items-center gap-1 text-xs font-extrabold text-[#25d366]"
+                      href={buildInvoiceWhatsAppLink(member, invoice)}
+                      rel="noreferrer"
+                      target="_blank"
+                      title="Send via WhatsApp"
+                    >
+                      <MessageCircle size={13} />
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            ))
           )}
         </tbody>
       </table>

@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { computeFinalPrice, type DiscountType, type DurationUnit } from "@/lib/plans/types";
 import { addDays, addDuration, daysBetween, derivePaymentStatus, round2, type PaymentMode } from "@/lib/subscriptions/types";
+import { computeInvoiceAmounts } from "@/lib/invoices/types";
+import { DEFAULT_GYM_SETTINGS, GYM_SETTINGS_ID } from "@/lib/settings/types";
 
 export type FormState = {
   error?: string;
@@ -67,8 +69,15 @@ export async function createSubscription(_prevState: FormState, formData: FormDa
 
   const endDate = addDuration(startDate, durationUnit!, durationValue!);
   const finalAmount = finalAmountOverride !== null ? round2(Math.max(0, finalAmountOverride)) : computeFinalPrice(standardPrice!, discountType, discountValue);
-  const balanceDue = Math.max(0, round2(finalAmount - amountPaid));
-  const paymentStatus = derivePaymentStatus(finalAmount, amountPaid);
+  const discountAmount = Math.max(0, round2(standardPrice! - finalAmount));
+
+  const { data: settingsRow } = await supabaseAdmin.from("gym_settings").select("tax_label, tax_rate").eq("id", GYM_SETTINGS_ID).maybeSingle();
+  const taxLabel = settingsRow?.tax_label ?? DEFAULT_GYM_SETTINGS.tax_label;
+  const taxRate = settingsRow?.tax_rate ?? DEFAULT_GYM_SETTINGS.tax_rate;
+  const { taxAmount, totalAmount } = computeInvoiceAmounts(finalAmount, 0, taxRate);
+
+  const balanceDue = Math.max(0, round2(totalAmount - amountPaid));
+  const paymentStatus = derivePaymentStatus(totalAmount, amountPaid);
 
   const { data: sub, error } = await supabaseAdmin
     .from("member_subscriptions")
@@ -106,10 +115,38 @@ export async function createSubscription(_prevState: FormState, formData: FormDa
     performed_by: createdBy,
   });
 
+  const { data: invoice } = await supabaseAdmin
+    .from("invoices")
+    .insert({
+      member_id: memberId,
+      subscription_id: sub.id,
+      issue_date: startDate,
+      plan_name: planName,
+      duration_unit: durationUnit,
+      duration_value: durationValue,
+      start_date: startDate,
+      end_date: endDate,
+      amount: standardPrice,
+      discount_amount: discountAmount,
+      tax_label: taxAmount > 0 ? taxLabel : null,
+      tax_rate: taxRate,
+      tax_amount: taxAmount,
+      total_amount: totalAmount,
+      amount_paid: amountPaid,
+      balance_due: balanceDue,
+      payment_mode: amountPaid > 0 ? paymentMode : null,
+      status: paymentStatus,
+      notes,
+      created_by: createdBy,
+    })
+    .select("id")
+    .single();
+
   if (amountPaid > 0) {
     await supabaseAdmin.from("member_payments").insert({
       member_id: memberId,
       subscription_id: sub.id,
+      invoice_id: invoice?.id ?? null,
       amount: amountPaid,
       payment_date: startDate,
       method: paymentMode,
@@ -119,6 +156,7 @@ export async function createSubscription(_prevState: FormState, formData: FormDa
   }
 
   revalidatePath("/subscriptions");
+  revalidatePath("/payments");
   revalidatePath(`/members/${memberId}`);
   redirect(`/subscriptions/${sub.id}`);
 }
@@ -272,9 +310,13 @@ export async function recordSubscriptionPayment(_prevState: FormState, formData:
   const { data: sub, error: fetchError } = await supabaseAdmin.from("member_subscriptions").select("id, member_id, final_amount, amount_paid").eq("id", id).single();
   if (fetchError || !sub) return { error: "Subscription not found." };
 
-  const newAmountPaid = round2((sub.amount_paid as number) + amount);
-  const newBalance = Math.max(0, round2((sub.final_amount as number) - newAmountPaid));
-  const newStatus = derivePaymentStatus(sub.final_amount as number, newAmountPaid);
+  const { data: invoice } = await supabaseAdmin.from("invoices").select("id, total_amount, amount_paid").eq("subscription_id", id).maybeSingle();
+  const totalAmount = (invoice?.total_amount as number | undefined) ?? (sub.final_amount as number);
+  const currentAmountPaid = (invoice?.amount_paid as number | undefined) ?? (sub.amount_paid as number);
+
+  const newAmountPaid = round2(currentAmountPaid + amount);
+  const newBalance = Math.max(0, round2(totalAmount - newAmountPaid));
+  const newStatus = derivePaymentStatus(totalAmount, newAmountPaid);
 
   const { error } = await supabaseAdmin
     .from("member_subscriptions")
@@ -282,9 +324,17 @@ export async function recordSubscriptionPayment(_prevState: FormState, formData:
     .eq("id", id);
   if (error) return { error: error.message };
 
+  if (invoice) {
+    await supabaseAdmin
+      .from("invoices")
+      .update({ amount_paid: newAmountPaid, balance_due: newBalance, status: newStatus, payment_mode: paymentMode, updated_at: new Date().toISOString() })
+      .eq("id", invoice.id);
+  }
+
   await supabaseAdmin.from("member_payments").insert({
     member_id: sub.member_id,
     subscription_id: id,
+    invoice_id: invoice?.id ?? null,
     amount,
     payment_date: new Date().toISOString().slice(0, 10),
     method: paymentMode,
@@ -303,6 +353,7 @@ export async function recordSubscriptionPayment(_prevState: FormState, formData:
 
   revalidatePath(`/subscriptions/${id}`);
   revalidatePath("/subscriptions");
+  revalidatePath("/payments");
   revalidatePath(`/members/${sub.member_id}`);
   return {};
 }

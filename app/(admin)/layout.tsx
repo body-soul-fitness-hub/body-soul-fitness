@@ -10,7 +10,9 @@ import {
   Dumbbell,
   LayoutDashboard,
   Menu,
+  Receipt,
   Search,
+  Settings,
   Users,
   UserPlus,
 } from "lucide-react";
@@ -21,7 +23,9 @@ const navigation: Array<{ icon: LucideIcon; label: string; href?: string }> = [
   { icon: Users, label: "Members", href: "/members" },
   { icon: UserPlus, label: "Enquiries", href: "/enquiries" },
   { icon: CreditCard, label: "Plans & billing", href: "/subscriptions" },
+  { icon: Receipt, label: "Payments", href: "/payments" },
   { icon: DoorOpen, label: "Attendance" },
+  { icon: Settings, label: "Settings", href: "/settings" },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
