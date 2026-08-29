@@ -1,7 +1,7 @@
 # Body & Soul Fitness Center — Product & Technical Blueprint
 
 **Document status:** Living source of truth  
-**Version:** 1.4.0  
+**Version:** 1.5.0  
 **Last updated:** 2026-08-29  
 **Owner:** Body & Soul Fitness Center  
 **Scope:** Product and technical planning only; this document does not authorize application implementation.
@@ -20,6 +20,8 @@ Versioning follows semantic intent:
 
 | Version | Date | Decision / change | Rationale |
 | --- | --- | --- | --- |
+| 1.5.0 | 2026-08-29 | Implemented the Enquiry Management module on `dev` with commit `9585554`: Add Enquiry form, searchable/filterable/paginated enquiry list with CSV export, an enquiry detail page with a follow-up activity timeline, and a Convert-to-Member flow with a minimal new `members` table and registration form. All reads/writes go through Next.js Server Actions using a server-only Supabase **service-role** key (`SUPABASE_SERVICE_ROLE_KEY`, not exposed to the browser) rather than the public/anon key, since admin authentication does not exist yet; `enquiries`, `enquiry_activities`, and `members` tables are defined in `supabase/migrations/0001_enquiry_management.sql` with RLS enabled and no policies (default-deny for `anon`/`authenticated`). The migration has not yet been applied to the production Supabase project and the service-role key has not yet been supplied, so the module is code-complete but not yet live. | Delivers the highest-priority pending checklist item (enquiry capture and lead management) while protecting newly introduced PII from the no-auth public key, consistent with treating RLS as an enforcement layer rather than UI hiding. |
+| 1.4.1 | 2026-08-29 | Pinned `framework: "nextjs"` in `vercel.json` (commit `a643a89`) after a Vercel build failed with "No Output Directory named `public`" because Vercel's dashboard preset defaulted away from Next.js framework detection. | Ensures Vercel preview builds on `dev` complete without manual per-project dashboard reconfiguration. |
 | 1.4.0 | 2026-08-29 | Implementation began on `dev` with commit `b59729c`: Next.js/TypeScript/Tailwind dashboard foundation, representative admin overview UI, local ignored Supabase environment configuration, and a pinned dependency lockfile. | Establishes the visual and project baseline while explicitly keeping production data, authentication, and schema work pending. |
 | 1.3.2 | 2026-08-29 | Recorded the owner’s Vercel account/GitHub connection and adopted Vercel as the initial `dev` preview path, while retaining Cloudflare Pages as the intended commercial live host. | Enables hosted build testing before Cloudflare launch without changing the production-hosting or budget decision. |
 | 1.3.1 | 2026-08-29 | Added a sequenced pre-build setup checklist, local developer prerequisites, and credential-handling boundaries. | Lets development start with only the required access while deferring deployment, messaging, and attendance-specific setup until the relevant module. |
@@ -33,29 +35,37 @@ Versioning follows semantic intent:
 ## Current implementation status
 
 **Active implementation branch:** `dev`  
-**Latest recorded implementation commit:** `b59729c`  
+**Latest recorded implementation commit:** `9585554`  
 **Repository state:** `dev` has been pushed to GitHub. `main` remains unchanged and documentation-only.
 
 ### Delivered in the current foundation
 
-- Next.js + TypeScript + Tailwind project/dashboard foundation.
+- Next.js + TypeScript + Tailwind project/dashboard foundation, restructured into an `app/(admin)` route group with a shared sidebar/header layout shared by the dashboard and the Enquiry Management pages.
 - Premium admin overview UI shell.
+- Enquiry Management module: Add Enquiry form (all fields from the checklist, including a soft mobile-number-duplicate warning); enquiry list with search, status/source/staff/date filters, pagination, and CSV export; enquiry detail page with a follow-up activity timeline, status updates, and a note/follow-up form; Convert to Member flow with a minimal member registration form prefilled from the enquiry, which only marks the enquiry Converted after the member record is created successfully.
+- Database schema for `enquiries`, `enquiry_activities`, and `members` written as `supabase/migrations/0001_enquiry_management.sql`, with RLS enabled and no policies (default-deny) since access is server-only.
+- Server-only Supabase client (`lib/supabase/server.ts`, guarded with the `server-only` package) authenticated with a service-role key, used exclusively from Server Components and Server Actions so the enquiry/member PII is never reachable through the public browser key.
 - Local ignored Supabase environment configuration.
 - Pinned dependency lockfile for reproducible installs.
+- `vercel.json` pinned to `framework: "nextjs"` so Vercel preview builds on `dev` use Next.js's own build/output handling instead of a defaulted static preset.
 
 ### Deliberate current limitations
 
-- All dashboard values are representative **demo metrics** only. They are not production records, KPI queries, or business reporting.
-- No production database schema, migrations, Row Level Security, Supabase authentication, or application data integration has been implemented yet.
+- All dashboard overview values are representative **demo metrics** only. They are not production records, KPI queries, or business reporting. The Enquiry Management module's data is real/live, not demo data.
+- The `0001_enquiry_management.sql` migration has been applied and `SUPABASE_SERVICE_ROLE_KEY` has been supplied locally in `.env.local`; it still needs to be added to deployment environment variables (e.g. Vercel) before the module works in any hosted deployment.
+- No Supabase authentication or admin/staff login exists yet; the Enquiry Management and dashboard pages are reachable by anyone who can reach the site, with authorization deferred to the service-role-key-only server-action pattern described above rather than a login. Add real admin auth and RLS policies before this is used with real prospective-member data.
+- "Assigned staff" on enquiries/members is a free-text field for now — there is no staff/user table yet.
 - The dashboard UI must not be treated as an authenticated admin portal until the pending data and authorization work is complete.
 
 ### Latest validation record
 
 | Check | Result | Notes |
 | --- | --- | --- |
-| TypeScript | Passed | Completed successfully for commit `b59729c`. |
+| TypeScript | Passed | Completed successfully for commit `b59729c`. Re-verified for the Enquiry Management module (`pnpm build`). |
 | Next.js Webpack compilation | Passed | Compilation completed successfully. |
 | `next build` final static-data phase | Unreliable locally | The final static-data phase is unreliable in the current local environment; treat the build as partially validated and re-check in a clean local/hosted environment before release. |
+| Enquiry Management: `pnpm build` | Passed | Full production build succeeds and all new routes resolve to the expected dynamic/static rendering mode, verified with a temporary local placeholder value for `SUPABASE_SERVICE_ROLE_KEY` (not a real credential; reverted after the check). |
+| Enquiry Management: end-to-end against production Supabase | Passed | After the owner applied `0001_enquiry_management.sql` and added the real `SUPABASE_SERVICE_ROLE_KEY`, verified live in-browser: created an enquiry, added a timeline note with a scheduled follow-up, and used Convert to Member — the enquiry correctly flipped to Converted only after the member record was created, and the list/detail pages reflected it. A test record ("Ananya Rao") was left in the production `enquiries`/`members` tables from this check; delete it via Supabase Table Editor if it shouldn't remain. |
 
 ---
 
@@ -257,9 +267,9 @@ This is an implementation outline, not final migration SQL. Every table should i
 | `organizations` | name, contact_phone, whatsapp_phone, email, address, hours, timezone | One row initially; keeps the platform organization-ready. |
 | `profiles` | user_id, full_name, role, active | One-to-one with Supabase `auth.users`; authorisation source for administrators, future staff, and members. |
 | `membership_plans` | name, description, price_amount, currency, duration_days, benefits, is_active, display_order | Archive rather than delete plans already used by member records. |
-| `leads` | full_name, phone, email, interest, source, message, status, assigned_to, next_follow_up_at, consent_at | Created by public enquiry or admin entry; link to a member only after conversion. |
-| `lead_notes` | lead_id, body, created_by | Immutable-by-default activity history; consider `activity_type` for status changes. |
-| `members` | public_member_id, profile_id, full_name, phone, email, status, joined_at, lead_id | `public_member_id` is a unique, human-shareable identifier, never a secret or authorization proof. `profile_id` links the member to one authenticated account. `lead_id` preserves attribution when a lead converts. Do not delete operational history. |
+| `leads` | full_name, phone, email, interest, source, message, status, assigned_to, next_follow_up_at, consent_at | Created by public enquiry or admin entry; link to a member only after conversion. **Implemented as `enquiries`** in `supabase/migrations/0001_enquiry_management.sql` for the internal staff-facing Enquiry Management module (v1.5.0) — the public, unauthenticated marketing-site enquiry form with consent/anti-spam handling described in section 6 is still pending and may feed the same table or a distinct intake path when it's built. |
+| `lead_notes` | lead_id, body, created_by | Immutable-by-default activity history; consider `activity_type` for status changes. **Implemented as `enquiry_activities`**, also covering status changes and conversion, not just notes. |
+| `members` | public_member_id, profile_id, full_name, phone, email, status, joined_at, lead_id | `public_member_id` is a unique, human-shareable identifier, never a secret or authorization proof. `profile_id` links the member to one authenticated account. `lead_id` preserves attribution when a lead converts. Do not delete operational history. **A minimal `members` table exists as of v1.5.0** (no `public_member_id` or `profile_id` yet, since Supabase Auth/Member Portal aren't built) purely to support Convert-to-Member; expect it to be extended, not replaced, when the full Member Portal is implemented. |
 | `member_memberships` | member_id, plan_id, status, starts_at, ends_at, amount_due, discount_amount, currency, frozen_at, freeze_reason | One member can have historical membership terms. Supports active/expiring/expired/frozen KPI definitions and outstanding-balance calculation. |
 | `member_notes` | member_id, body, created_by | Internal notes; constrain access to authorised roles. |
 | `payments` | member_id, membership_id, amount, currency, status, method, external_reference, paid_at, received_by | Records money collected, including manual payments. Use successful/settled records only in collected-revenue calculations; never store raw card data. |
