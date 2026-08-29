@@ -30,7 +30,12 @@ set member_id = 'BSFC-' || lpad(ordered.rn::text, 6, '0')
 from ordered
 where m.id = ordered.id;
 
-select setval('members_member_id_seq', (select count(*) from members), true);
+-- setval can't be called with 0 (a sequence's minimum is 1), so an empty members table
+-- needs is_called = false instead, which makes the *next* nextval() return 1 rather than 2.
+with member_count as (
+  select count(*) as n from members
+)
+select setval('members_member_id_seq', greatest(n, 1), n > 0) from member_count;
 
 create or replace function set_member_id() returns trigger as $$
 begin
