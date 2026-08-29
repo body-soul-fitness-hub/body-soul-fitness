@@ -1,3 +1,5 @@
+import type { MemberSubscription } from "@/lib/subscriptions/types";
+
 export const MEMBER_STATUSES = [
   { value: "active", label: "Active" },
   { value: "inactive", label: "Inactive" },
@@ -61,33 +63,9 @@ export type MemberStatusChange = {
   created_at: string;
 };
 
-export type MemberSubscription = {
-  id: string;
-  member_id: string;
-  plan_name: string;
-  start_date: string;
-  end_date: string | null;
-  amount: number | null;
-  currency: string;
-  status: "active" | "upcoming" | "expired" | "cancelled";
-  notes: string | null;
-  created_by: string | null;
-  created_at: string;
-};
-
-export type MemberPayment = {
-  id: string;
-  member_id: string;
-  subscription_id: string | null;
-  amount: number;
-  currency: string;
-  payment_date: string;
-  method: string | null;
-  reference: string | null;
-  notes: string | null;
-  received_by: string | null;
-  created_at: string;
-};
+// MemberSubscription and MemberPayment live in lib/subscriptions/types.ts (owned by the
+// Plans & Subscriptions module); re-exported here isn't needed since nothing in this module
+// constructs them directly — see derivePlanStatus below, which only needs a narrow Pick<>.
 
 export type MemberCheckin = {
   id: string;

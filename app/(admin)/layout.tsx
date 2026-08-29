@@ -20,7 +20,7 @@ const navigation: Array<{ icon: LucideIcon; label: string; href?: string }> = [
   { icon: LayoutDashboard, label: "Overview", href: "/" },
   { icon: Users, label: "Members", href: "/members" },
   { icon: UserPlus, label: "Enquiries", href: "/enquiries" },
-  { icon: CreditCard, label: "Plans & billing" },
+  { icon: CreditCard, label: "Plans & billing", href: "/subscriptions" },
   { icon: DoorOpen, label: "Attendance" },
 ];
 

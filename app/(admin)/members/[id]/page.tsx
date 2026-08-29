@@ -1,19 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Pencil, UserCircle } from "lucide-react";
+import { ArrowLeft, Pencil, Plus, UserCircle } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getMemberPhotoUrl } from "@/lib/members/photo";
-import {
-  MEMBER_STATUSES,
-  type Member,
-  type MemberCheckin,
-  type MemberNote,
-  type MemberNotification,
-  type MemberPayment,
-  type MemberStatusChange,
-  type MemberSubscription,
-} from "@/lib/members/types";
+import { MEMBER_STATUSES, type Member, type MemberCheckin, type MemberNote, type MemberNotification, type MemberStatusChange } from "@/lib/members/types";
 import { GENDERS, WORKOUT_TIMES, calculateAge, labelFor } from "@/lib/enquiries/types";
+import { deriveSubscriptionStatus, SUBSCRIPTION_DISPLAY_STATUSES, type MemberPayment, type MemberSubscription } from "@/lib/subscriptions/types";
 import { NoteForm, StatusChangeForm } from "./detail-forms";
 
 function statusTone(status: string): string {
@@ -26,6 +18,21 @@ function statusTone(status: string): string {
       return "bg-[#ffe5dc] text-[#a94f37]";
     case "expired":
       return "bg-[#ffe9c7] text-[#8a5a12]";
+    default:
+      return "bg-[#e4efea] text-[#27463b]";
+  }
+}
+
+function subscriptionStatusTone(status: string): string {
+  switch (status) {
+    case "active":
+      return "bg-[#e7f7c5] text-[#4f6d1e]";
+    case "expiring_soon":
+      return "bg-[#ffe9c7] text-[#8a5a12]";
+    case "expired":
+      return "bg-[#ffe5dc] text-[#a94f37]";
+    case "frozen":
+      return "bg-[#dbeafe] text-[#1e4b8f]";
     default:
       return "bg-[#e4efea] text-[#27463b]";
   }
@@ -119,8 +126,15 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
           </section>
 
           <section className="rounded-3xl border border-[#e5e9e5] bg-white p-6">
-            <p className="text-sm font-extrabold">Subscriptions</p>
-            <p className="mt-1 text-xs font-medium text-[#89938f]">Current and past membership plan terms.</p>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-extrabold">Subscriptions</p>
+                <p className="mt-1 text-xs font-medium text-[#89938f]">Current and past membership plan terms.</p>
+              </div>
+              <Link className="inline-flex items-center gap-1.5 rounded-xl bg-[#111c19] px-3.5 py-2 text-xs font-extrabold text-white" href={`/subscriptions/new?memberId=${record.id}`}>
+                <Plus size={14} /> New subscription
+              </Link>
+            </div>
             <SubscriptionsTable subscriptions={(subscriptions ?? []) as MemberSubscription[]} />
           </section>
 
@@ -207,29 +221,40 @@ function EmptyRow({ colSpan, label }: { colSpan: number; label: string }) {
 function SubscriptionsTable({ subscriptions }: { subscriptions: MemberSubscription[] }) {
   return (
     <div className="mt-4 overflow-x-auto">
-      <table className="w-full min-w-[560px] text-left text-sm">
+      <table className="w-full min-w-[640px] text-left text-sm">
         <thead>
           <tr className="border-b border-[#f0f2f0] text-xs font-extrabold uppercase tracking-wide text-[#89938f]">
             <th className="py-2.5 pr-4">Plan</th>
             <th className="py-2.5 pr-4">Start</th>
             <th className="py-2.5 pr-4">End</th>
-            <th className="py-2.5 pr-4">Amount</th>
+            <th className="py-2.5 pr-4">Final amount</th>
+            <th className="py-2.5 pr-4">Payment</th>
             <th className="py-2.5">Status</th>
+            <th className="py-2.5" />
           </tr>
         </thead>
         <tbody>
           {subscriptions.length === 0 ? (
-            <EmptyRow colSpan={5} label="No subscriptions on record yet." />
+            <EmptyRow colSpan={7} label="No subscriptions on record yet." />
           ) : (
-            subscriptions.map((sub) => (
-              <tr className="border-b border-[#f0f2f0] last:border-0" key={sub.id}>
-                <td className="py-2.5 pr-4 font-bold">{sub.plan_name}</td>
-                <td className="py-2.5 pr-4 text-[#3a4542]">{sub.start_date}</td>
-                <td className="py-2.5 pr-4 text-[#3a4542]">{sub.end_date ?? "—"}</td>
-                <td className="py-2.5 pr-4 text-[#3a4542]">{formatAmount(sub.amount, sub.currency)}</td>
-                <td className="py-2.5 capitalize text-[#3a4542]">{sub.status}</td>
-              </tr>
-            ))
+            subscriptions.map((sub) => {
+              const displayStatus = deriveSubscriptionStatus(sub);
+              return (
+                <tr className="border-b border-[#f0f2f0] last:border-0" key={sub.id}>
+                  <td className="py-2.5 pr-4 font-bold">{sub.plan_name}</td>
+                  <td className="py-2.5 pr-4 text-[#3a4542]">{sub.start_date}</td>
+                  <td className="py-2.5 pr-4 text-[#3a4542]">{sub.end_date ?? "—"}</td>
+                  <td className="py-2.5 pr-4 text-[#3a4542]">{formatAmount(sub.final_amount, sub.currency)}</td>
+                  <td className="py-2.5 pr-4 capitalize text-[#3a4542]">{sub.payment_status}</td>
+                  <td className="py-2.5">
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${subscriptionStatusTone(displayStatus)}`}>{labelFor(SUBSCRIPTION_DISPLAY_STATUSES, displayStatus)}</span>
+                  </td>
+                  <td className="py-2.5 text-right">
+                    <Link className="text-xs font-extrabold text-[#577c25]" href={`/subscriptions/${sub.id}`}>View</Link>
+                  </td>
+                </tr>
+              );
+            })
           )}
         </tbody>
       </table>
