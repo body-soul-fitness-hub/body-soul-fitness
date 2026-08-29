@@ -1,7 +1,7 @@
 # Body & Soul Fitness Center — Product & Technical Blueprint
 
 **Document status:** Living source of truth  
-**Version:** 1.3.2  
+**Version:** 1.4.0  
 **Last updated:** 2026-08-29  
 **Owner:** Body & Soul Fitness Center  
 **Scope:** Product and technical planning only; this document does not authorize application implementation.
@@ -20,12 +20,42 @@ Versioning follows semantic intent:
 
 | Version | Date | Decision / change | Rationale |
 | --- | --- | --- | --- |
+| 1.4.0 | 2026-08-29 | Implementation began on `dev` with commit `b59729c`: Next.js/TypeScript/Tailwind dashboard foundation, representative admin overview UI, local ignored Supabase environment configuration, and a pinned dependency lockfile. | Establishes the visual and project baseline while explicitly keeping production data, authentication, and schema work pending. |
 | 1.3.2 | 2026-08-29 | Recorded the owner’s Vercel account/GitHub connection and adopted Vercel as the initial `dev` preview path, while retaining Cloudflare Pages as the intended commercial live host. | Enables hosted build testing before Cloudflare launch without changing the production-hosting or budget decision. |
 | 1.3.1 | 2026-08-29 | Added a sequenced pre-build setup checklist, local developer prerequisites, and credential-handling boundaries. | Lets development start with only the required access while deferring deployment, messaging, and attendance-specific setup until the relevant module. |
 | 1.3.0 | 2026-08-29 | Replaced member QR self check-in/out with one-tap attendance verified by gym Wi-Fi public-IP allowlist and browser geofence; retained administrator manual entry and QR/reception scanning only as optional high-assurance fallbacks. | Removes the camera/QR requirement while requiring two independent server-side presence signals. |
 | 1.2.0 | 2026-08-29 | Approved two-portal product direction: Admin and Member portals; attendance, payment/receipt, and member self-service are initial-product requirements. | Gives members useful self-service while ensuring reported gym presence is not based on an unverifiable remote action. Superseded for self-service attendance by v1.3.0. |
 | 1.1.0 | 2026-08-29 | Approved low-cost launch strategy: Supabase Free, Cloudflare Pages as the initial production host, direct Meta WhatsApp Cloud API when automation is enabled, and an annual infrastructure ceiling of ₹8,000. | Supports the expected low operational volume without using Vercel Hobby for commercial production; preserves a portable path to Vercel Pro and Supabase Pro. |
 | 1.0.0 | 2026-08-29 | Initial product and technical blueprint created. | Establishes an implementation-ready baseline before software is built. |
+
+---
+
+## Current implementation status
+
+**Active implementation branch:** `dev`  
+**Latest recorded implementation commit:** `b59729c`  
+**Repository state:** `dev` has been pushed to GitHub. `main` remains unchanged and documentation-only.
+
+### Delivered in the current foundation
+
+- Next.js + TypeScript + Tailwind project/dashboard foundation.
+- Premium admin overview UI shell.
+- Local ignored Supabase environment configuration.
+- Pinned dependency lockfile for reproducible installs.
+
+### Deliberate current limitations
+
+- All dashboard values are representative **demo metrics** only. They are not production records, KPI queries, or business reporting.
+- No production database schema, migrations, Row Level Security, Supabase authentication, or application data integration has been implemented yet.
+- The dashboard UI must not be treated as an authenticated admin portal until the pending data and authorization work is complete.
+
+### Latest validation record
+
+| Check | Result | Notes |
+| --- | --- | --- |
+| TypeScript | Passed | Completed successfully for commit `b59729c`. |
+| Next.js Webpack compilation | Passed | Compilation completed successfully. |
+| `next build` final static-data phase | Unreliable locally | The final static-data phase is unreliable in the current local environment; treat the build as partially validated and re-check in a clean local/hosted environment before release. |
 
 ---
 
@@ -393,9 +423,9 @@ Status legend: `[ ]` not started, `[-]` in progress, `[x]` completed, `[!]` bloc
 
 - [x] Create this product and technical blueprint.
 - [ ] Confirm brand assets, public copy, contact details, operating hours, address, and pricing.
-- [ ] Initialize Next.js + TypeScript repository and quality tooling.
-- [ ] Configure Tailwind CSS, shadcn/ui, design tokens, and responsive baseline.
-- [ ] Create Supabase projects, schema migrations, RLS baseline, and environment configuration.
+- [x] Initialize the Next.js + TypeScript + Tailwind dashboard foundation and pin dependencies (`b59729c`, `dev`).
+- [-] Configure Tailwind/shadcn design tokens and the responsive baseline; the initial admin overview UI is complete, but the shared component/design-system baseline remains to be formalized.
+- [-] Configure local ignored Supabase environment scaffolding; production schema migrations, RLS baseline, authentication, and data integration remain unimplemented.
 - [ ] Configure GitHub `main` protection, `dev` integration workflow, required checks, and Vercel preview builds for `dev` pushes.
 - [ ] Configure Cloudflare Pages production deployment from the approved `main` build when commercial launch is ready.
 
@@ -412,6 +442,7 @@ Status legend: `[ ]` not started, `[-]` in progress, `[x]` completed, `[!]` bloc
 
 - [ ] Implement Supabase Auth and administrator onboarding.
 - [ ] Implement protected admin layout and server-side authorization checks.
+- [x] Implement the visual admin overview/dashboard shell with representative demo metrics only (`b59729c`, `dev`).
 - [ ] Implement dashboard KPI definitions, queries, filters, and empty/error states: revenue, balances, membership health, lead conversion, live presence, attendance, revenue trend, and plan mix.
 - [ ] Implement lead list, filters, status updates, notes, follow-up dates, and WhatsApp action.
 - [ ] Implement member records, unique public member ID generation, member-account provisioning, and conversion from lead.
@@ -438,6 +469,7 @@ Status legend: `[ ]` not started, `[-]` in progress, `[x]` completed, `[!]` bloc
 
 - [ ] Implement/test RLS policies for all data access paths.
 - [ ] Add audit coverage for sensitive actions.
+- [-] Validate the project build: TypeScript and Next.js Webpack compilation pass; re-run the unreliable local `next build` static-data phase in a clean local/hosted environment before accepting a release build.
 - [ ] Add unit tests for validation/business rules and browser tests for critical public/admin/member flows, including trusted-IP handling, geofence/accuracy failures, dual-signal enforcement, RLS ownership, check-in/out idempotency, and receipt authorization.
 - [ ] Complete accessibility review for public and admin core flows.
 - [ ] Complete privacy/copy review and production readiness checklist.
