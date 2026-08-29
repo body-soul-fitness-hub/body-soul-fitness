@@ -18,7 +18,7 @@ import type { LucideIcon } from "lucide-react";
 
 const navigation: Array<{ icon: LucideIcon; label: string; href?: string }> = [
   { icon: LayoutDashboard, label: "Overview", href: "/" },
-  { icon: Users, label: "Members" },
+  { icon: Users, label: "Members", href: "/members" },
   { icon: UserPlus, label: "Enquiries", href: "/enquiries" },
   { icon: CreditCard, label: "Plans & billing" },
   { icon: DoorOpen, label: "Attendance" },

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -17,7 +18,7 @@ export default function DashboardPage() {
     <div className="grid-pattern px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
       <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
         <div><p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#699238]">Friday, 29 August</p><h1 className="font-display mt-2 text-3xl font-black tracking-[-0.055em] sm:text-4xl">Good morning, Harshdeep.</h1><p className="mt-2 text-sm font-medium text-[#6c7773]">Here&apos;s what&apos;s moving at Body & Soul today.</p></div>
-        <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#111c19] px-5 py-3 text-sm font-extrabold text-white shadow-xl shadow-[#111c19]/15"><UserPlus size={17} /> Add member</button>
+        <Link className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#111c19] px-5 py-3 text-sm font-extrabold text-white shadow-xl shadow-[#111c19]/15" href="/members/new"><UserPlus size={17} /> Add member</Link>
       </div>
 
       <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
