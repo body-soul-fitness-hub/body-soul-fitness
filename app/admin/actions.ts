@@ -52,4 +52,18 @@ export async function createSuperAdmin(_previous: AdminFormState, form: FormData
   return { success: `${fullName}'s super-admin account is ready. Give them the email and initial password securely.` };
 }
 
+export async function resetSuperAdminPassword(_previous: AdminFormState, form: FormData): Promise<AdminFormState> {
+  const actor = await getSuperAdmin();
+  if (!actor) return { error: "Only a signed-in super-admin can reset passwords." };
+  const staffId = read(form, "staff_id");
+  const password = String(form.get("password") ?? ""); const confirm = String(form.get("confirm_password") ?? "");
+  if (!staffId) return { error: "Could not identify that super-admin account." };
+  if (password.length < 12) return { error: "Use a password of at least 12 characters." };
+  if (password !== confirm) return { error: "The two password fields do not match." };
+  const { data: target, error: targetError } = await supabaseAdmin.from("staff_users").select("auth_user_id,full_name").eq("id", staffId).eq("role", "administrator").maybeSingle();
+  if (targetError || !target?.auth_user_id) return { error: "Could not find that super-admin account." };
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(target.auth_user_id, { password });
+  return error ? { error: error.message } : { success: `${target.full_name}'s password has been reset.` };
+}
+
 export async function logout() { const supabase = await createServerSupabaseClient(); await supabase.auth.signOut(); redirect("/admin/login"); }
