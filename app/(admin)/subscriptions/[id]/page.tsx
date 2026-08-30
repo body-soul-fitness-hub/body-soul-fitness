@@ -6,6 +6,7 @@ import { labelFor } from "@/lib/enquiries/types";
 import { durationLabel } from "@/lib/plans/types";
 import {
   deriveSubscriptionStatus,
+  PAYMENT_MODES,
   PAYMENT_STATUSES,
   SUBSCRIPTION_DISPLAY_STATUSES,
   type MemberPayment,
@@ -29,9 +30,9 @@ function statusTone(status: string): string {
   }
 }
 
-function formatAmount(amount: number | null, currency: string): string {
+function formatAmount(amount: number | null): string {
   if (amount === null) return "—";
-  return `${currency} ${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 type MemberInfo = { id: string; member_id: string; full_name: string; mobile_number: string };
@@ -113,9 +114,9 @@ export default async function SubscriptionDetailPage({ params }: { params: Promi
               <Detail label="Duration" value={record.duration_unit && record.duration_value ? durationLabel(record.duration_unit, record.duration_value) : null} />
               <Detail label="Start date" value={record.start_date} />
               <Detail label="End date" value={record.end_date} />
-              <Detail label="Standard price" value={formatAmount(record.standard_price, record.currency)} />
-              <Detail label="Discount" value={record.discount_type ? `${record.discount_value}${record.discount_type === "percentage" ? "%" : ` ${record.currency}`}` : "None"} />
-              <Detail label="Final amount" value={formatAmount(record.final_amount, record.currency)} />
+              <Detail label="Standard price" value={formatAmount(record.standard_price)} />
+              <Detail label="Discount" value={record.discount_type ? `${record.discount_type === "percentage" ? `${record.discount_value}%` : `₹${record.discount_value}`}` : "None"} />
+              <Detail label="Final amount" value={formatAmount(record.final_amount)} />
               <Detail label="Notes" value={record.notes} />
               {record.status === "frozen" && <Detail label="Freeze reason" value={record.freeze_reason} />}
               {record.status === "cancelled" && <Detail label="Cancel reason" value={record.cancel_reason} />}
@@ -128,9 +129,9 @@ export default async function SubscriptionDetailPage({ params }: { params: Promi
             <p className="text-sm font-extrabold">Payment</p>
             <dl className="mt-4 grid gap-4 sm:grid-cols-2">
               <Detail label="Payment status" value={labelFor(PAYMENT_STATUSES, record.payment_status)} />
-              <Detail label="Payment mode" value={record.payment_mode ? record.payment_mode.replace("_", " ") : null} />
-              <Detail label="Amount paid" value={formatAmount(record.amount_paid, record.currency)} />
-              <Detail label="Balance due" value={formatAmount(record.balance_due, record.currency)} />
+              <Detail label="Payment mode" value={record.payment_mode ? labelFor(PAYMENT_MODES, record.payment_mode) : null} />
+              <Detail label="Amount paid" value={formatAmount(record.amount_paid)} />
+              <Detail label="Balance due" value={formatAmount(record.balance_due)} />
             </dl>
 
             <div className="mt-5 overflow-x-auto border-t border-[#f0f2f0] pt-4">
@@ -150,8 +151,8 @@ export default async function SubscriptionDetailPage({ params }: { params: Promi
                     (payments as MemberPayment[]).map((payment) => (
                       <tr className="border-t border-[#f0f2f0]" key={payment.id}>
                         <td className="py-2.5 pr-4 text-[#3a4542]">{payment.payment_date}</td>
-                        <td className="py-2.5 pr-4 font-bold">{formatAmount(payment.amount, payment.currency)}</td>
-                        <td className="py-2.5 pr-4 capitalize text-[#3a4542]">{payment.method?.replace("_", " ") ?? "—"}</td>
+                        <td className="py-2.5 pr-4 font-bold">{formatAmount(payment.amount)}</td>
+                        <td className="py-2.5 pr-4 text-[#3a4542]">{labelFor(PAYMENT_MODES, payment.method)}</td>
                         <td className="py-2.5 text-[#3a4542]">{payment.reference ?? "—"}</td>
                       </tr>
                     ))

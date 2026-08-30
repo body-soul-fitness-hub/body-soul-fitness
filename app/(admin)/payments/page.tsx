@@ -22,8 +22,8 @@ function statusTone(status: string): string {
   }
 }
 
-function formatAmount(amount: number, currency: string): string {
-  return `${currency} ${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function formatAmount(amount: number): string {
+  return `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function toQueryString(filters: PaymentFilters, page?: number): string {
@@ -124,8 +124,8 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
                     ) : "—"}
                   </td>
                   <td className="px-5 py-3.5 font-mono text-xs font-extrabold text-[#577c25]">{payment.invoices?.invoice_number ?? "—"}</td>
-                  <td className="px-5 py-3.5 font-bold">{formatAmount(payment.amount, payment.currency)}</td>
-                  <td className="px-5 py-3.5 capitalize text-[#3a4542]">{payment.method?.replace("_", " ") ?? "—"}</td>
+                  <td className="px-5 py-3.5 font-bold">{formatAmount(payment.amount)}</td>
+                  <td className="px-5 py-3.5 text-[#3a4542]">{labelFor(PAYMENT_MODES, payment.method)}</td>
                   <td className="px-5 py-3.5">
                     {payment.invoices && (
                       <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${statusTone(payment.invoices.status)}`}>{labelFor(PAYMENT_STATUSES, payment.invoices.status)}</span>

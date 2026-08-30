@@ -6,13 +6,13 @@ import { DEFAULT_GYM_SETTINGS, GYM_SETTINGS_ID, type GymSettings } from "@/lib/s
 import { buildInvoiceWhatsAppLink, type Invoice } from "@/lib/invoices/types";
 import { durationLabel } from "@/lib/plans/types";
 import { labelFor } from "@/lib/enquiries/types";
-import { PAYMENT_STATUSES, type MemberPayment } from "@/lib/subscriptions/types";
+import { PAYMENT_MODES, PAYMENT_STATUSES, type MemberPayment } from "@/lib/subscriptions/types";
 import { PrintButton } from "./print-button";
 
 type MemberInfo = { id: string; member_id: string; full_name: string; mobile_number: string };
 
-function formatAmount(amount: number, currency: string): string {
-  return `${currency} ${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function formatAmount(amount: number): string {
+  return `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function statusTone(status: string): string {
@@ -108,12 +108,12 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
 
         <div className="mt-8 border-t border-[#f0f2f0] pt-6">
           <dl className="space-y-2.5 text-sm">
-            <Row label="Amount" value={formatAmount(record.amount, record.currency)} />
-            <Row label="Discount" value={`− ${formatAmount(record.discount_amount, record.currency)}`} />
-            {record.tax_amount > 0 && <Row label={`${record.tax_label ?? "Tax"} (${record.tax_rate}%)`} value={formatAmount(record.tax_amount, record.currency)} />}
-            <Row bold label="Total" value={formatAmount(record.total_amount, record.currency)} />
-            <Row label="Amount paid" value={formatAmount(record.amount_paid, record.currency)} />
-            <Row bold label="Balance due" value={formatAmount(record.balance_due, record.currency)} />
+            <Row label="Amount" value={formatAmount(record.amount)} />
+            <Row label="Discount" value={`− ${formatAmount(record.discount_amount)}`} />
+            {record.tax_amount > 0 && <Row label={`${record.tax_label ?? "Tax"} (${record.tax_rate}%)`} value={formatAmount(record.tax_amount)} />}
+            <Row bold label="Total" value={formatAmount(record.total_amount)} />
+            <Row label="Amount paid" value={formatAmount(record.amount_paid)} />
+            <Row bold label="Balance due" value={formatAmount(record.balance_due)} />
           </dl>
         </div>
 
@@ -136,8 +136,8 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
                   {paymentRows.map((payment) => (
                     <tr className="border-t border-[#f0f2f0]" key={payment.id}>
                       <td className="py-2 pr-4 text-[#3a4542]">{payment.payment_date}</td>
-                      <td className="py-2 pr-4 font-bold">{formatAmount(payment.amount, payment.currency)}</td>
-                      <td className="py-2 pr-4 capitalize text-[#3a4542]">{payment.method?.replace("_", " ") ?? "—"}</td>
+                      <td className="py-2 pr-4 font-bold">{formatAmount(payment.amount)}</td>
+                      <td className="py-2 pr-4 text-[#3a4542]">{labelFor(PAYMENT_MODES, payment.method)}</td>
                       <td className="py-2 text-[#3a4542]">{payment.received_by ?? "—"}</td>
                     </tr>
                   ))}

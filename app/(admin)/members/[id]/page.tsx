@@ -5,12 +5,13 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { getMemberPhotoUrl } from "@/lib/members/photo";
 import { MEMBER_STATUSES, type Member, type MemberCheckin, type MemberNote, type MemberStatusChange } from "@/lib/members/types";
 import { GENDERS, WORKOUT_TIMES, calculateAge, labelFor } from "@/lib/enquiries/types";
-import { deriveSubscriptionStatus, PAYMENT_STATUSES, SUBSCRIPTION_DISPLAY_STATUSES, type MemberPayment, type MemberSubscription } from "@/lib/subscriptions/types";
+import { deriveSubscriptionStatus, PAYMENT_MODES, PAYMENT_STATUSES, SUBSCRIPTION_DISPLAY_STATUSES, type MemberPayment, type MemberSubscription } from "@/lib/subscriptions/types";
 import { buildInvoiceWhatsAppLink, type Invoice } from "@/lib/invoices/types";
 import { DELIVERY_STATUSES, NOTIFICATION_TYPES, type MemberNotificationLog } from "@/lib/whatsapp/types";
 import { NoteForm, StatusChangeForm } from "./detail-forms";
 import { MemberQrCard } from "./member-qr-card";
 import { createQrPayload } from "@/lib/attendance/qr";
+import { checkinMethodLabel } from "@/lib/attendance/types";
 import { PortalAccessForm } from "./portal-access-form";
 
 function statusTone(status: string): string {
@@ -43,9 +44,9 @@ function subscriptionStatusTone(status: string): string {
   }
 }
 
-function formatAmount(amount: number | null, currency: string): string {
+function formatAmount(amount: number | null): string {
   if (amount === null) return "—";
-  return `${currency} ${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default async function MemberDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -264,7 +265,7 @@ function SubscriptionsTable({ subscriptions }: { subscriptions: MemberSubscripti
                   <td className="py-2.5 pr-4 font-bold">{sub.plan_name}</td>
                   <td className="py-2.5 pr-4 text-[#3a4542]">{sub.start_date}</td>
                   <td className="py-2.5 pr-4 text-[#3a4542]">{sub.end_date ?? "—"}</td>
-                  <td className="py-2.5 pr-4 text-[#3a4542]">{formatAmount(sub.final_amount, sub.currency)}</td>
+                  <td className="py-2.5 pr-4 text-[#3a4542]">{formatAmount(sub.final_amount)}</td>
                   <td className="py-2.5 pr-4 capitalize text-[#3a4542]">{sub.payment_status}</td>
                   <td className="py-2.5">
                     <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${subscriptionStatusTone(displayStatus)}`}>{labelFor(SUBSCRIPTION_DISPLAY_STATUSES, displayStatus)}</span>
@@ -318,9 +319,9 @@ function InvoicesTable({ invoices, member }: { invoices: Invoice[]; member: Memb
                 <td className="py-2.5 pr-4 font-mono text-xs font-extrabold text-[#577c25]">{invoice.invoice_number}</td>
                 <td className="py-2.5 pr-4 text-[#3a4542]">{invoice.issue_date}</td>
                 <td className="py-2.5 pr-4 font-bold">{invoice.plan_name ?? "—"}</td>
-                <td className="py-2.5 pr-4 text-[#3a4542]">{formatAmount(invoice.total_amount, invoice.currency)}</td>
-                <td className="py-2.5 pr-4 text-[#3a4542]">{formatAmount(invoice.amount_paid, invoice.currency)}</td>
-                <td className="py-2.5 pr-4 text-[#3a4542]">{formatAmount(invoice.balance_due, invoice.currency)}</td>
+                <td className="py-2.5 pr-4 text-[#3a4542]">{formatAmount(invoice.total_amount)}</td>
+                <td className="py-2.5 pr-4 text-[#3a4542]">{formatAmount(invoice.amount_paid)}</td>
+                <td className="py-2.5 pr-4 text-[#3a4542]">{formatAmount(invoice.balance_due)}</td>
                 <td className="py-2.5">
                   <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${paymentStatusTone(invoice.status)}`}>{labelFor(PAYMENT_STATUSES, invoice.status)}</span>
                 </td>
@@ -370,8 +371,8 @@ function PaymentsTable({ payments }: { payments: MemberPayment[] }) {
             payments.map((payment) => (
               <tr className="border-b border-[#f0f2f0] last:border-0" key={payment.id}>
                 <td className="py-2.5 pr-4 text-[#3a4542]">{payment.payment_date}</td>
-                <td className="py-2.5 pr-4 font-bold">{formatAmount(payment.amount, payment.currency)}</td>
-                <td className="py-2.5 pr-4 text-[#3a4542]">{payment.method ?? "—"}</td>
+                <td className="py-2.5 pr-4 font-bold">{formatAmount(payment.amount)}</td>
+                <td className="py-2.5 pr-4 text-[#3a4542]">{labelFor(PAYMENT_MODES, payment.method)}</td>
                 <td className="py-2.5 pr-4 text-[#3a4542]">{payment.reference ?? "—"}</td>
                 <td className="py-2.5 text-[#3a4542]">{payment.received_by ?? "—"}</td>
               </tr>
@@ -402,7 +403,7 @@ function CheckinsTable({ checkins }: { checkins: MemberCheckin[] }) {
               <tr className="border-b border-[#f0f2f0] last:border-0" key={visit.id}>
                 <td className="py-2.5 pr-4 text-[#3a4542]">{new Date(visit.checked_in_at).toLocaleString()}</td>
                 <td className="py-2.5 pr-4 text-[#3a4542]">{visit.checked_out_at ? new Date(visit.checked_out_at).toLocaleString() : "Still inside"}</td>
-                <td className="py-2.5 capitalize text-[#3a4542]">{visit.method}</td>
+                <td className="py-2.5 text-[#3a4542]">{checkinMethodLabel(visit.method)}</td>
               </tr>
             ))
           )}
