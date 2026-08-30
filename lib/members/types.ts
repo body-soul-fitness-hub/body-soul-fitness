@@ -28,6 +28,7 @@ export const PLAN_EXPIRING_SOON_DAYS = 7;
 export type Member = {
   id: string;
   member_id: string;
+  legacy_customer_code?: string | null;
   full_name: string;
   mobile_number: string;
   whatsapp_number: string | null;
