@@ -30,7 +30,7 @@ create or replace function import_legacy_sale_row(
 ) returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_subscription_id uuid;

@@ -10,6 +10,47 @@ const BUCKET = "legacy-import-uploads";
 
 type UploadedFiles = { customersFile: File; salesFile: File };
 
+type Resultish<T> = { data: T | null; error: { message: string; code?: string } | null };
+
+// ~1,250 sequential requests against Supabase in one run occasionally hit a transient
+// connection failure (surfaces as supabase-js's own caught "TypeError: fetch failed" in
+// `error.message`, not a real database error — those carry a `code` like "23505" and are never
+// retried here since retrying a genuine constraint violation can't help). A short retry with
+// backoff turns one flaky request into a delay instead of a spuriously failed row.
+async function withRetry<T>(fn: () => PromiseLike<Resultish<T>>, attempts = 3): Promise<Resultish<T>> {
+  let last: Resultish<T> = { data: null, error: { message: "withRetry: no attempts made" } };
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const result = await fn();
+    if (!result.error) return result;
+    const isTransient = !result.error.code && /fetch failed|network|ECONNRESET|ETIMEDOUT|socket hang up/i.test(result.error.message);
+    last = result;
+    if (!isTransient || attempt === attempts) return result;
+    await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
+  }
+  return last;
+}
+
+// A plain sequential loop over ~1,250 rows (609 members + ~635 sale rows), each a network
+// round-trip to Supabase, took 3–13 minutes in testing — too slow to be usable, and well past
+// any serverless function's time limit if this route ever runs on Vercel rather than local dev.
+// Bounded concurrency keeps memory/connection use sane while cutting wall time roughly
+// proportionally to the concurrency level. Order of `results` matches `items` regardless of
+// completion order, so counting/aggregation afterward stays deterministic.
+async function mapWithConcurrency<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+  async function worker() {
+    while (nextIndex < items.length) {
+      const current = nextIndex++;
+      results[current] = await fn(items[current]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
+  return results;
+}
+
+const IMPORT_CONCURRENCY = 12;
+
 async function loadExistingMemberLookup(): Promise<ExistingMemberLookup> {
   const { data } = await supabaseAdmin.from("members").select("id, full_name, mobile_number, legacy_customer_code").limit(20_000);
   const byLegacyCode = new Map<string, { id: string; full_name: string; mobile_number: string }>();
@@ -87,7 +128,7 @@ export async function runConfirm(batchId: string, createdBy: string): Promise<Co
   if (batchError || !batch) throw new Error("Import batch not found.");
 
   if (batch.status === "imported") return batch.summary as CommitSummary;
-  if (batch.status !== "validated") throw new Error(`Batch is in status "${batch.status}", expected "validated". Re-run the dry run first.`);
+  if (batch.status !== "validated" && batch.status !== "failed") throw new Error(`Batch is in status "${batch.status}", expected "validated". Re-run the dry run first.`);
 
   const [customersDownload, salesDownload] = await Promise.all([
     supabaseAdmin.storage.from(BUCKET).download(`${batchId}/customers.xlsx`),
@@ -109,110 +150,118 @@ export async function runConfirm(batchId: string, createdBy: string): Promise<Co
   const blockedCustomerRowIndexes = new Set(summary.blockedCustomerRowIndexes);
   const blockedSaleRowIndexes = new Set(summary.blockedSaleRowIndexes);
 
-  const rowOutcomes: CommitRowOutcome[] = [];
-  let membersCreated = 0;
-  let membersSkippedExisting = 0;
-  let membersSkippedInvalid = 0;
+  type MemberRowResult = { legacyCode: string; memberId: string | null; outcome: CommitRowOutcome };
 
-  const memberIdByLegacyCode = new Map<string, string>();
-
-  for (const row of customers) {
+  const memberResults = await mapWithConcurrency(customers, IMPORT_CONCURRENCY, async (row): Promise<MemberRowResult> => {
     if (blockedCustomerRowIndexes.has(row.rowIndex)) {
-      membersSkippedInvalid += 1;
-      rowOutcomes.push({ legacyCode: row.code, status: "skipped_invalid" });
-      continue;
+      return { legacyCode: row.code, memberId: null, outcome: { legacyCode: row.code, status: "skipped_invalid" } };
     }
 
     const joinDate = normalizeLegacyDate(row.conversionDate);
     if (!joinDate) {
       // Defense in depth — validate() already blocks this, so this should be unreachable.
-      membersSkippedInvalid += 1;
-      rowOutcomes.push({ legacyCode: row.code, status: "skipped_invalid", message: "Unparseable conversion date." });
-      continue;
+      return { legacyCode: row.code, memberId: null, outcome: { legacyCode: row.code, status: "skipped_invalid", message: "Unparseable conversion date." } };
     }
 
     const payload = mapCustomerRowToMemberInsert(row, batchId, joinDate);
-    const { data: inserted, error: insertError } = await supabaseAdmin.from("members").insert(payload).select("id").single();
+    const { data: inserted, error: insertError } = await withRetry<{ id: string }>(() => supabaseAdmin.from("members").insert(payload).select("id").single());
 
     if (insertError) {
       if (insertError.code === "23505") {
-        const { data: existingRow } = await supabaseAdmin.from("members").select("id").eq("legacy_customer_code", row.code).maybeSingle();
+        const { data: existingRow, error: lookupError } = await withRetry<{ id: string }>(() => supabaseAdmin.from("members").select("id").eq("legacy_customer_code", row.code).maybeSingle());
         if (existingRow) {
-          memberIdByLegacyCode.set(row.code, existingRow.id);
-          membersSkippedExisting += 1;
-          rowOutcomes.push({ legacyCode: row.code, status: "skipped_existing" });
-          continue;
+          return { legacyCode: row.code, memberId: existingRow.id, outcome: { legacyCode: row.code, status: "skipped_existing" } };
+        }
+        if (lookupError) {
+          return { legacyCode: row.code, memberId: null, outcome: { legacyCode: row.code, status: "failed", message: `Insert conflicted but the existing row could not be confirmed: ${lookupError.message}` } };
         }
       }
-      membersSkippedInvalid += 1;
-      rowOutcomes.push({ legacyCode: row.code, status: "failed", message: insertError.message });
-      continue;
+      return { legacyCode: row.code, memberId: null, outcome: { legacyCode: row.code, status: "failed", message: insertError.message } };
     }
 
-    memberIdByLegacyCode.set(row.code, inserted.id);
-    membersCreated += 1;
-    rowOutcomes.push({ legacyCode: row.code, status: "created" });
+    return { legacyCode: row.code, memberId: inserted!.id, outcome: { legacyCode: row.code, status: "created" } };
+  });
+
+  const rowOutcomes: CommitRowOutcome[] = memberResults.map((r) => r.outcome);
+  let membersCreated = 0;
+  let membersSkippedExisting = 0;
+  let membersSkippedInvalid = 0;
+  const memberIdByLegacyCode = new Map<string, string>();
+  for (const { legacyCode, memberId, outcome } of memberResults) {
+    if (memberId) memberIdByLegacyCode.set(legacyCode, memberId);
+    if (outcome.status === "created") membersCreated += 1;
+    else if (outcome.status === "skipped_existing") membersSkippedExisting += 1;
+    else membersSkippedInvalid += 1;
   }
 
-  let subscriptionsCreated = 0;
-  let subscriptionsSkippedExisting = 0;
-  let subscriptionsSkippedInvalid = 0;
-  let invoicesCreated = 0;
-  let paymentsCreated = 0;
+  type SaleRowResult = { outcome: CommitRowOutcome; invoiceCreated: boolean; paymentCreated: boolean };
 
-  for (const row of sales) {
+  const saleResults = await mapWithConcurrency(sales, IMPORT_CONCURRENCY, async (row): Promise<SaleRowResult> => {
     if (blockedSaleRowIndexes.has(row.rowIndex)) {
-      subscriptionsSkippedInvalid += 1;
-      rowOutcomes.push({ legacyCode: row.customerId, status: "skipped_invalid" });
-      continue;
+      return { outcome: { legacyCode: row.customerId, status: "skipped_invalid" }, invoiceCreated: false, paymentCreated: false };
     }
 
     const memberId = memberIdByLegacyCode.get(row.customerId);
     if (!memberId) {
-      subscriptionsSkippedInvalid += 1;
-      rowOutcomes.push({ legacyCode: row.customerId, status: "skipped_invalid", message: "Member row was not imported." });
-      continue;
+      return { outcome: { legacyCode: row.customerId, status: "skipped_invalid", message: "Member row was not imported." }, invoiceCreated: false, paymentCreated: false };
     }
 
     const startIso = normalizeLegacyDate(row.startDate)!;
     const endIso = normalizeLegacyDate(row.endDate)!;
     const params = mapSaleRowToInsertParams(row, startIso, endIso);
 
-    const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc("import_legacy_sale_row", {
-      p_batch_id: batchId,
-      p_member_id: memberId,
-      p_legacy_sale_row_key: params.legacySaleRowKey,
-      p_plan_name: params.planName,
-      p_start_date: params.startDate,
-      p_end_date: params.endDate,
-      p_standard_price: params.standardPrice,
-      p_final_amount: params.finalAmount,
-      p_amount_paid: params.amountPaid,
-      p_payment_status: params.paymentStatus,
-      p_payment_mode: params.paymentMode,
-      p_legacy_plan_status: params.legacyPlanStatus,
-      p_legacy_invoice_number: params.legacyInvoiceNumber,
-      p_notes: params.notes,
-      p_created_by: createdBy,
-    });
+    const { data: rpcResult, error: rpcError } = await withRetry<{ status: string; subscription_id?: string; invoice_id?: string; payment_id?: string }>(() =>
+      supabaseAdmin.rpc("import_legacy_sale_row", {
+        p_batch_id: batchId,
+        p_member_id: memberId,
+        p_legacy_sale_row_key: params.legacySaleRowKey,
+        p_plan_name: params.planName,
+        p_start_date: params.startDate,
+        p_end_date: params.endDate,
+        p_standard_price: params.standardPrice,
+        p_final_amount: params.finalAmount,
+        p_amount_paid: params.amountPaid,
+        p_payment_status: params.paymentStatus,
+        p_payment_mode: params.paymentMode,
+        p_legacy_plan_status: params.legacyPlanStatus,
+        p_legacy_invoice_number: params.legacyInvoiceNumber,
+        p_notes: params.notes,
+        p_created_by: createdBy,
+      })
+    );
 
     if (rpcError) {
-      subscriptionsSkippedInvalid += 1;
-      rowOutcomes.push({ legacySaleRowKey: params.legacySaleRowKey, status: "failed", message: rpcError.message });
-      continue;
+      return { outcome: { legacySaleRowKey: params.legacySaleRowKey, status: "failed", message: rpcError.message }, invoiceCreated: false, paymentCreated: false };
     }
 
-    const outcome = rpcResult as { status: string; subscription_id?: string; invoice_id?: string; payment_id?: string };
+    const outcome = rpcResult!;
     if (outcome.status === "skipped_existing") {
-      subscriptionsSkippedExisting += 1;
-      rowOutcomes.push({ legacySaleRowKey: params.legacySaleRowKey, status: "skipped_existing" });
-      continue;
+      return { outcome: { legacySaleRowKey: params.legacySaleRowKey, status: "skipped_existing" }, invoiceCreated: false, paymentCreated: false };
     }
 
-    subscriptionsCreated += 1;
-    if (outcome.invoice_id) invoicesCreated += 1;
-    if (outcome.payment_id) paymentsCreated += 1;
-    rowOutcomes.push({ legacySaleRowKey: params.legacySaleRowKey, status: "created" });
+    return {
+      outcome: { legacySaleRowKey: params.legacySaleRowKey, status: "created" },
+      invoiceCreated: Boolean(outcome.invoice_id),
+      paymentCreated: Boolean(outcome.payment_id),
+    };
+  });
+
+  let subscriptionsCreated = 0;
+  let subscriptionsSkippedExisting = 0;
+  let subscriptionsSkippedInvalid = 0;
+  let invoicesCreated = 0;
+  let paymentsCreated = 0;
+  for (const { outcome, invoiceCreated, paymentCreated } of saleResults) {
+    rowOutcomes.push(outcome);
+    if (outcome.status === "created") {
+      subscriptionsCreated += 1;
+      if (invoiceCreated) invoicesCreated += 1;
+      if (paymentCreated) paymentsCreated += 1;
+    } else if (outcome.status === "skipped_existing") {
+      subscriptionsSkippedExisting += 1;
+    } else {
+      subscriptionsSkippedInvalid += 1;
+    }
   }
 
   // Finalize: any member in this batch with no currently-active, unexpired subscription is
@@ -248,9 +297,16 @@ export async function runConfirm(batchId: string, createdBy: string): Promise<Co
     rowOutcomes,
   };
 
+  // A row-level "failed" outcome (a real DB error, not a validation-blocked or
+  // already-imported row) means this run didn't fully succeed — mark the batch "failed" so a
+  // re-confirm after fixing the underlying issue can retry it, instead of permanently locking
+  // in a partial result under "imported".
+  const hasRealFailures = rowOutcomes.some((outcome) => outcome.status === "failed");
+  const finalStatus = hasRealFailures ? "failed" : "imported";
+
   await supabaseAdmin
     .from("legacy_import_batches")
-    .update({ status: "imported", summary: commitSummary, completed_at: new Date().toISOString() })
+    .update({ status: finalStatus, summary: commitSummary, completed_at: finalStatus === "imported" ? new Date().toISOString() : null })
     .eq("id", batchId);
 
   return commitSummary;
