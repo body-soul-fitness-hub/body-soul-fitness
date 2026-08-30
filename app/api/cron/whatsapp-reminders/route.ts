@@ -14,11 +14,7 @@ type Candidate = {
   members: { full_name: string } | null;
 };
 
-const REMINDER_WINDOWS: Array<{ daysBeforeEnd: number; type: NotificationType }> = [
-  { daysBeforeEnd: 7, type: "expiry_reminder_7" },
-  { daysBeforeEnd: 3, type: "expiry_reminder_3" },
-  { daysBeforeEnd: 1, type: "expiry_reminder_1" },
-];
+const reminderType = (days: number): NotificationType | null => days === 7 ? "expiry_reminder_7" : days === 3 ? "expiry_reminder_3" : days === 1 ? "expiry_reminder_1" : null;
 
 // Vercel Cron calls this daily. Reminders fire for subscriptions whose end_date is exactly N days
 // out; the expired notice fires the day after end_date. A subscription that's been renewed keeps
@@ -32,7 +28,7 @@ export async function GET(request: Request) {
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const { data: settingsRow } = await supabaseAdmin.from("gym_settings").select("gym_name").eq("id", GYM_SETTINGS_ID).maybeSingle();
+  const { data: settingsRow } = await supabaseAdmin.from("gym_settings").select("gym_name,expiry_reminder_days").eq("id", GYM_SETTINGS_ID).maybeSingle();
   const gymName = settingsRow?.gym_name ?? DEFAULT_GYM_SETTINGS.gym_name;
 
   const results: Array<{ type: NotificationType; memberId: string; ok: boolean; errorMessage?: string }> = [];
@@ -85,7 +81,9 @@ export async function GET(request: Request) {
     }
   }
 
-  for (const window of REMINDER_WINDOWS) {
+  const configuredDays = (settingsRow?.expiry_reminder_days ?? [7, 3, 1]) as number[];
+  const windows = configuredDays.map((days: number) => ({ daysBeforeEnd: days, type: reminderType(days) })).filter((window: { daysBeforeEnd: number; type: NotificationType | null }): window is { daysBeforeEnd: number; type: NotificationType } => Boolean(window.type));
+  for (const window of windows) {
     await processWindow(window.type, addDays(today, window.daysBeforeEnd), `Automation: Expiry reminder (${window.daysBeforeEnd} day${window.daysBeforeEnd === 1 ? "" : "s"})`);
   }
   await processWindow("expired", addDays(today, -1), "Automation: Subscription expired");

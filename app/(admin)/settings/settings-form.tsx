@@ -20,6 +20,9 @@ export function SettingsForm({ settings }: { settings: GymSettings }) {
         <Field label="Gym name" required>
           <input className={inputClass} defaultValue={settings.gym_name} name="gym_name" required type="text" />
         </Field>
+        <Field error={state.fieldErrors?.logo_url} label="Logo URL" hint="A full image URL used on branded receipts.">
+          <input className={inputClass} defaultValue={settings.logo_url ?? ""} name="logo_url" type="url" placeholder="https://..." />
+        </Field>
       </div>
 
       <p className="mt-8 text-xs font-extrabold uppercase tracking-[0.14em] text-[#89938f]">Contact details</p>
@@ -54,7 +57,13 @@ export function SettingsForm({ settings }: { settings: GymSettings }) {
       </div>
 
       <p className="mt-8 text-xs font-extrabold uppercase tracking-[0.14em] text-[#89938f]">Receipt</p>
-      <div className="mt-4">
+      <div className="mt-4 grid gap-5 sm:grid-cols-2">
+        <Field error={state.fieldErrors?.invoice_number_format} label="Invoice number format" hint="Use {YYYY} and required {NUMBER:6}.">
+          <input className={inputClass} defaultValue={settings.invoice_number_format ?? "INV-{YYYY}-{NUMBER:6}"} name="invoice_number_format" type="text" />
+        </Field>
+        <Field label="Expiry reminder schedule" hint="Days before expiry, comma-separated.">
+          <input className={inputClass} defaultValue={(settings.expiry_reminder_days ?? [7, 3, 1]).join(", ")} name="expiry_reminder_days" inputMode="numeric" type="text" />
+        </Field>
         <Field label="Thank-you message">
           <textarea className={inputClass} defaultValue={settings.thank_you_message} name="thank_you_message" rows={2} />
         </Field>
@@ -69,11 +78,12 @@ export function SettingsForm({ settings }: { settings: GymSettings }) {
   );
 }
 
-function Field({ label, children, required, error, className }: { label: string; children: React.ReactNode; required?: boolean; error?: string; className?: string }) {
+function Field({ label, children, required, error, className, hint }: { label: string; children: React.ReactNode; required?: boolean; error?: string; className?: string; hint?: string }) {
   return (
     <label className={`block text-xs font-extrabold text-[#3a4542] ${className ?? ""}`}>
       {label} {required && <span className="text-[#ff7d5c]">*</span>}
       <div className="mt-1.5 font-normal normal-case">{children}</div>
+      {hint && <p className="mt-1 text-xs font-medium normal-case text-[#89938f]">{hint}</p>}
       {error && <p className="mt-1.5 text-xs font-bold text-[#a94f37]">{error}</p>}
     </label>
   );

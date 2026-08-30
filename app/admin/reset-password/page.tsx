@@ -1,0 +1,8 @@
+"use client";
+
+import Link from "next/link";
+import { useActionState } from "react";
+import { changeAdminPassword, type AdminFormState } from "../actions";
+const initial: AdminFormState = {};
+export default function ResetPasswordPage() { const [state, action, pending] = useActionState(changeAdminPassword, initial); return <main className="min-h-screen bg-[#f7fbff] px-5 py-10 text-[#10264a]"><div className="mx-auto max-w-sm"><p className="inline-flex items-center gap-2 text-sm font-extrabold text-[#2563eb]"><span className="grid size-8 place-items-center rounded-xl bg-[#2563eb] text-white">✦</span> BODY &amp; SOUL</p><h1 className="mt-12 font-display text-3xl font-black tracking-[-.05em]">Choose a new password</h1><form action={action} className="mt-8 space-y-4 rounded-3xl border border-[#dceaff] bg-white p-5"><Field label="New password" name="password"/><Field label="Confirm new password" name="confirm_password"/>{state.error && <p className="rounded-xl bg-[#fff0f1] p-3 text-xs font-bold text-[#a83848]">{state.error}</p>}{state.success && <p className="rounded-xl bg-[#e7f7c5] p-3 text-xs font-bold text-[#4f6d1e]">{state.success} <Link className="underline" href="/admin/login">Sign in</Link></p>}<button disabled={pending} className="w-full rounded-xl bg-[#2563eb] py-3 text-sm font-extrabold text-white disabled:opacity-60">{pending ? "Saving…" : "Save new password"}</button></form></div></main>; }
+function Field({ label, name }: { label: string; name: string }) { return <label className="block text-xs font-extrabold">{label}<input required autoComplete="new-password" className="mt-1.5 w-full rounded-xl border border-[#dceaff] px-3 py-3 text-sm font-medium outline-none focus:border-[#2563eb]" name={name} type="password"/></label>; }

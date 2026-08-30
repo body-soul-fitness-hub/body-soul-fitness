@@ -11,6 +11,9 @@ export type GymSettings = {
   tax_label: string;
   tax_rate: number;
   thank_you_message: string;
+  logo_url?: string | null;
+  invoice_number_format?: string;
+  expiry_reminder_days?: number[];
   updated_at: string;
 };
 
@@ -25,4 +28,7 @@ export const DEFAULT_GYM_SETTINGS: Omit<GymSettings, "id" | "updated_at"> = {
   tax_label: "GST",
   tax_rate: 0,
   thank_you_message: "Thank you for choosing Body & Soul Fitness Center. See you at the gym!",
+  logo_url: null,
+  invoice_number_format: "INV-{YYYY}-{NUMBER:6}",
+  expiry_reminder_days: [7, 3, 1],
 };

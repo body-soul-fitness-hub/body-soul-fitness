@@ -54,6 +54,8 @@ export type Member = {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  auth_user_id?: string | null;
+  portal_activated_at?: string | null;
 };
 
 export type MemberStatusChange = {

@@ -28,10 +28,15 @@ export async function updateGymSettings(_prevState: FormState, formData: FormDat
   const taxRateRaw = str(formData, "tax_rate");
   const taxRate = taxRateRaw ? Number(taxRateRaw) : 0;
   const thankYouMessage = str(formData, "thank_you_message") ?? DEFAULT_GYM_SETTINGS.thank_you_message;
+  const logoUrl = str(formData, "logo_url");
+  const invoiceNumberFormat = str(formData, "invoice_number_format") ?? "INV-{YYYY}-{NUMBER:6}";
+  const reminderDays = (str(formData, "expiry_reminder_days") ?? "7,3,1").split(",").map((v) => Number(v.trim())).filter((v) => Number.isInteger(v) && v >= 0 && v <= 365);
 
   if (!Number.isFinite(taxRate) || taxRate < 0 || taxRate > 100) {
     return { fieldErrors: { tax_rate: "Tax rate must be a number between 0 and 100." } };
   }
+  if (logoUrl && !/^https?:\/\//i.test(logoUrl)) return { fieldErrors: { logo_url: "Use a full http(s) URL for the logo." } };
+  if (!invoiceNumberFormat.includes("{NUMBER:6}")) return { fieldErrors: { invoice_number_format: "Include {NUMBER:6} to keep invoice numbers unique." } };
 
   const { error } = await supabaseAdmin
     .from("gym_settings")
@@ -46,6 +51,9 @@ export async function updateGymSettings(_prevState: FormState, formData: FormDat
       tax_label: taxLabel,
       tax_rate: taxRate,
       thank_you_message: thankYouMessage,
+      logo_url: logoUrl,
+      invoice_number_format: invoiceNumberFormat,
+      expiry_reminder_days: [...new Set(reminderDays)].sort((a, b) => b - a),
       updated_at: new Date().toISOString(),
     });
 

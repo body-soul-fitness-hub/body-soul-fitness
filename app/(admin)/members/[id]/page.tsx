@@ -9,6 +9,9 @@ import { deriveSubscriptionStatus, PAYMENT_STATUSES, SUBSCRIPTION_DISPLAY_STATUS
 import { buildInvoiceWhatsAppLink, type Invoice } from "@/lib/invoices/types";
 import { DELIVERY_STATUSES, NOTIFICATION_TYPES, type MemberNotificationLog } from "@/lib/whatsapp/types";
 import { NoteForm, StatusChangeForm } from "./detail-forms";
+import { MemberQrCard } from "./member-qr-card";
+import { createQrPayload } from "@/lib/attendance/qr";
+import { PortalAccessForm } from "./portal-access-form";
 
 function statusTone(status: string): string {
   switch (status) {
@@ -107,6 +110,8 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.3fr_1fr]">
         <div className="space-y-5">
+          <MemberQrCard memberId={record.member_id} name={record.full_name} payload={createQrPayload(record.member_id)} />
+          <PortalAccessForm memberRowId={record.id} activated={Boolean(record.portal_activated_at)} />
           <section className="rounded-3xl border border-[#e5e9e5] bg-white p-6">
             <p className="text-sm font-extrabold">Personal information</p>
             <dl className="mt-4 grid gap-4 sm:grid-cols-2">
