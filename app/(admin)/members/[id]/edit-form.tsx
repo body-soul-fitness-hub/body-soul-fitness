@@ -58,6 +58,19 @@ export function MemberEditForm({ member, photoUrl }: { member: Member; photoUrl:
           <input className={inputClass} defaultValue={member.whatsapp_number ?? ""} name="whatsapp_number" type="tel" />
         </Field>
 
+        <Field className="sm:col-span-2" label="WhatsApp messaging">
+          <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
+            <label className="flex items-center gap-2 text-sm font-medium normal-case text-[#0f1816]">
+              <input className="size-4" defaultChecked={member.whatsapp_consent} name="whatsapp_consent" type="checkbox" />
+              Member has consented to WhatsApp messages
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium normal-case text-[#0f1816]">
+              <input className="size-4" defaultChecked={member.whatsapp_promotional_opt_out} name="whatsapp_promotional_opt_out" type="checkbox" />
+              Opted out of promotional messages
+            </label>
+          </div>
+        </Field>
+
         <Field label="Email">
           <input className={inputClass} defaultValue={member.email ?? ""} name="email" type="email" />
         </Field>

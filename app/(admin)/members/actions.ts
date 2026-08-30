@@ -76,12 +76,17 @@ export async function createMember(_prevState: FormState, formData: FormData): P
     }
   }
 
+  const whatsappConsent = formData.get("whatsapp_consent") === "on";
+
   const { data: member, error: memberError } = await supabaseAdmin
     .from("members")
     .insert({
       full_name: fullName,
       mobile_number: mobileNumber,
       whatsapp_number: str(formData, "whatsapp_number"),
+      whatsapp_consent: whatsappConsent,
+      whatsapp_consent_at: whatsappConsent ? new Date().toISOString() : null,
+      whatsapp_promotional_opt_out: formData.get("whatsapp_promotional_opt_out") === "on",
       email: str(formData, "email"),
       gender: str(formData, "gender"),
       date_of_birth: str(formData, "date_of_birth"),
@@ -167,13 +172,16 @@ export async function updateMember(_prevState: FormState, formData: FormData): P
 
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from("members")
-    .select("photo_path")
+    .select("photo_path, whatsapp_consent, whatsapp_consent_at")
     .eq("id", memberRowId)
     .single();
 
   if (fetchError || !existing) {
     return { error: "Member not found." };
   }
+
+  const whatsappConsent = formData.get("whatsapp_consent") === "on";
+  const whatsappConsentAt = whatsappConsent ? (existing.whatsapp_consent ? existing.whatsapp_consent_at : new Date().toISOString()) : null;
 
   let photoPath = existing.photo_path as string | null;
   const photo = fileOrNull(formData, "photo");
@@ -193,6 +201,9 @@ export async function updateMember(_prevState: FormState, formData: FormData): P
       full_name: fullName,
       mobile_number: mobileNumber,
       whatsapp_number: str(formData, "whatsapp_number"),
+      whatsapp_consent: whatsappConsent,
+      whatsapp_consent_at: whatsappConsentAt,
+      whatsapp_promotional_opt_out: formData.get("whatsapp_promotional_opt_out") === "on",
       email: str(formData, "email"),
       gender: str(formData, "gender"),
       date_of_birth: str(formData, "date_of_birth"),

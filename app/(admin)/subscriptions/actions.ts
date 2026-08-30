@@ -7,6 +7,8 @@ import { computeFinalPrice, type DiscountType, type DurationUnit } from "@/lib/p
 import { addDays, addDuration, daysBetween, derivePaymentStatus, round2, type PaymentMode } from "@/lib/subscriptions/types";
 import { computeInvoiceAmounts } from "@/lib/invoices/types";
 import { DEFAULT_GYM_SETTINGS, GYM_SETTINGS_ID } from "@/lib/settings/types";
+import { sendNotification } from "@/lib/whatsapp/send";
+import { getSiteUrl } from "@/lib/site";
 
 export type FormState = {
   error?: string;
@@ -25,6 +27,10 @@ function num(formData: FormData, key: string): number | null {
   if (raw === null) return null;
   const value = Number(raw);
   return Number.isFinite(value) ? value : null;
+}
+
+function formatCurrency(amount: number): string {
+  return `INR ${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export async function searchMembers(query: string): Promise<Array<{ id: string; member_id: string; full_name: string; mobile_number: string }>> {
@@ -71,9 +77,13 @@ export async function createSubscription(_prevState: FormState, formData: FormDa
   const finalAmount = finalAmountOverride !== null ? round2(Math.max(0, finalAmountOverride)) : computeFinalPrice(standardPrice!, discountType, discountValue);
   const discountAmount = Math.max(0, round2(standardPrice! - finalAmount));
 
-  const { data: settingsRow } = await supabaseAdmin.from("gym_settings").select("tax_label, tax_rate").eq("id", GYM_SETTINGS_ID).maybeSingle();
+  const [{ data: settingsRow }, { data: memberRow }] = await Promise.all([
+    supabaseAdmin.from("gym_settings").select("gym_name, tax_label, tax_rate").eq("id", GYM_SETTINGS_ID).maybeSingle(),
+    supabaseAdmin.from("members").select("full_name").eq("id", memberId).maybeSingle(),
+  ]);
   const taxLabel = settingsRow?.tax_label ?? DEFAULT_GYM_SETTINGS.tax_label;
   const taxRate = settingsRow?.tax_rate ?? DEFAULT_GYM_SETTINGS.tax_rate;
+  const gymName = settingsRow?.gym_name ?? DEFAULT_GYM_SETTINGS.gym_name;
   const { taxAmount, totalAmount } = computeInvoiceAmounts(finalAmount, 0, taxRate);
 
   const balanceDue = Math.max(0, round2(totalAmount - amountPaid));
@@ -139,8 +149,33 @@ export async function createSubscription(_prevState: FormState, formData: FormDa
       notes,
       created_by: createdBy,
     })
-    .select("id")
+    .select("id, invoice_number, share_token")
     .single();
+
+  if (invoice) {
+    try {
+      await sendNotification({
+        memberId: memberId!,
+        notificationType: "bill_generated",
+        triggerSource: "automation",
+        performedBy: "Automation: Bill generated",
+        subscriptionId: sub.id,
+        invoiceId: invoice.id,
+        variables: {
+          member_name: memberRow?.full_name ?? "",
+          invoice_number: invoice.invoice_number ?? "",
+          amount: formatCurrency(totalAmount),
+          balance_due: formatCurrency(balanceDue),
+          receipt_link: `${getSiteUrl()}/receipt/${invoice.share_token}`,
+          gym_name: gymName,
+        },
+      });
+    } catch (whatsappError) {
+      // A WhatsApp failure should never block subscription/invoice creation — sendNotification
+      // already logs the failure to member_notifications itself.
+      console.error(`WhatsApp bill-generated notification failed for subscription ${sub.id}:`, whatsappError);
+    }
+  }
 
   if (amountPaid > 0) {
     await supabaseAdmin.from("member_payments").insert({

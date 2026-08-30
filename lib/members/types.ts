@@ -31,6 +31,9 @@ export type Member = {
   full_name: string;
   mobile_number: string;
   whatsapp_number: string | null;
+  whatsapp_consent: boolean;
+  whatsapp_consent_at: string | null;
+  whatsapp_promotional_opt_out: boolean;
   email: string | null;
   gender: string | null;
   date_of_birth: string | null;
@@ -73,17 +76,6 @@ export type MemberCheckin = {
   checked_in_at: string;
   checked_out_at: string | null;
   method: string;
-  created_by: string | null;
-  created_at: string;
-};
-
-export type MemberNotification = {
-  id: string;
-  member_id: string;
-  channel: string;
-  message: string;
-  status: string;
-  sent_at: string;
   created_by: string | null;
   created_at: string;
 };

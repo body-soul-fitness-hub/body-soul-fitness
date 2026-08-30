@@ -3,10 +3,11 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Download, MessageCircle, Pencil, Plus, UserCircle } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getMemberPhotoUrl } from "@/lib/members/photo";
-import { MEMBER_STATUSES, type Member, type MemberCheckin, type MemberNote, type MemberNotification, type MemberStatusChange } from "@/lib/members/types";
+import { MEMBER_STATUSES, type Member, type MemberCheckin, type MemberNote, type MemberStatusChange } from "@/lib/members/types";
 import { GENDERS, WORKOUT_TIMES, calculateAge, labelFor } from "@/lib/enquiries/types";
 import { deriveSubscriptionStatus, PAYMENT_STATUSES, SUBSCRIPTION_DISPLAY_STATUSES, type MemberPayment, type MemberSubscription } from "@/lib/subscriptions/types";
 import { buildInvoiceWhatsAppLink, type Invoice } from "@/lib/invoices/types";
+import { DELIVERY_STATUSES, NOTIFICATION_TYPES, type MemberNotificationLog } from "@/lib/whatsapp/types";
 import { NoteForm, StatusChangeForm } from "./detail-forms";
 
 function statusTone(status: string): string {
@@ -111,6 +112,11 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
             <dl className="mt-4 grid gap-4 sm:grid-cols-2">
               <Detail label="Mobile number" value={record.mobile_number} />
               <Detail label="WhatsApp number" value={record.whatsapp_number} />
+              <Detail
+                label="WhatsApp consent"
+                value={record.whatsapp_consent ? `Given${record.whatsapp_consent_at ? ` · ${new Date(record.whatsapp_consent_at).toLocaleDateString()}` : ""}` : "Not given"}
+              />
+              <Detail label="Promotional messages" value={record.whatsapp_promotional_opt_out ? "Opted out" : "Opted in"} />
               <Detail label="Email" value={record.email} />
               <Detail label="Gender" value={labelFor(GENDERS, record.gender)} />
               <Detail label="Date of birth" value={record.date_of_birth ? `${record.date_of_birth}${age !== null ? ` (${age} yrs)` : ""}` : null} />
@@ -159,7 +165,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
 
           <section className="rounded-3xl border border-[#e5e9e5] bg-white p-6">
             <p className="text-sm font-extrabold">Notifications sent</p>
-            <NotificationsList notifications={(notifications ?? []) as MemberNotification[]} />
+            <NotificationsList notifications={(notifications ?? []) as MemberNotificationLog[]} />
           </section>
         </div>
 
@@ -401,7 +407,20 @@ function CheckinsTable({ checkins }: { checkins: MemberCheckin[] }) {
   );
 }
 
-function NotificationsList({ notifications }: { notifications: MemberNotification[] }) {
+function notificationStatusTone(status: string): string {
+  switch (status) {
+    case "delivered":
+      return "bg-[#e7f7c5] text-[#4f6d1e]";
+    case "sent":
+      return "bg-[#dbeafe] text-[#1e4b8f]";
+    case "queued":
+      return "bg-[#ffe9c7] text-[#8a5a12]";
+    default:
+      return "bg-[#ffe5dc] text-[#a94f37]";
+  }
+}
+
+function NotificationsList({ notifications }: { notifications: MemberNotificationLog[] }) {
   if (notifications.length === 0) {
     return <p className="mt-4 text-sm font-medium text-[#6c7773]">No notifications sent yet.</p>;
   }
@@ -409,9 +428,16 @@ function NotificationsList({ notifications }: { notifications: MemberNotificatio
     <ol className="mt-4 space-y-3">
       {notifications.map((notification) => (
         <li className="border-b border-[#f0f2f0] pb-3 last:border-0 last:pb-0" key={notification.id}>
-          <p className="text-sm font-medium leading-snug">{notification.message}</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs font-extrabold text-[#3a4542]">{labelFor(NOTIFICATION_TYPES, notification.notification_type)}</p>
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${notificationStatusTone(notification.status)}`}>
+              {DELIVERY_STATUSES.find((s) => s.value === notification.status)?.label ?? notification.status}
+            </span>
+          </div>
+          <p className="mt-1 text-sm font-medium leading-snug">{notification.message}</p>
+          {notification.error_message && <p className="mt-1 text-xs font-bold text-[#a94f37]">{notification.error_message}</p>}
           <p className="mt-0.5 text-xs font-medium text-[#89938f]">
-            {notification.channel} · {new Date(notification.sent_at).toLocaleString()} · {notification.status}
+            {new Date(notification.sent_at).toLocaleString()}{notification.created_by ? ` · ${notification.created_by}` : ""}
           </p>
         </li>
       ))}
