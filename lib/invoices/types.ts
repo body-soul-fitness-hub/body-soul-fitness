@@ -1,5 +1,6 @@
 import { round2, type DurationUnit } from "@/lib/plans/types";
 import type { PaymentMode, PaymentStatus } from "@/lib/subscriptions/types";
+import { normalizeToE164 } from "@/lib/whatsapp/phone";
 
 export type Invoice = {
   id: string;
@@ -44,8 +45,7 @@ export function buildInvoiceWhatsAppLink(
   member: { full_name: string; mobile_number: string },
   invoice: Pick<Invoice, "invoice_number" | "total_amount" | "amount_paid" | "balance_due" | "currency">
 ): string {
-  const digits = member.mobile_number.replace(/\D/g, "");
-  const withCountryCode = digits.length === 10 ? `91${digits}` : digits;
+  const withCountryCode = normalizeToE164(member.mobile_number) ?? member.mobile_number.replace(/\D/g, "");
   const message =
     `Hi ${member.full_name}, here is your invoice ${invoice.invoice_number} from Body & Soul Fitness Center. ` +
     `Total: ${invoice.currency} ${invoice.total_amount.toFixed(2)}, Paid: ${invoice.currency} ${invoice.amount_paid.toFixed(2)}, ` +

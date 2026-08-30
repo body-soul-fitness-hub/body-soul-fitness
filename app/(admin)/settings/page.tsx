@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Archive, ClipboardList, MessageCircle, ShieldCheck, Users } from "lucide-react";
+import { Archive, ClipboardList, MessageCircle, ShieldCheck, UploadCloud, Users } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { DEFAULT_GYM_SETTINGS, GYM_SETTINGS_ID, type GymSettings } from "@/lib/settings/types";
 import { SettingsForm } from "./settings-form";
@@ -28,6 +28,7 @@ export default async function SettingsPage() {
         <SettingsLink href="/settings/staff" icon={<Users size={18}/>} title="Staff & roles" text="Directory and access roles" />
         <SettingsLink href="/settings/audit" icon={<ClipboardList size={18}/>} title="Audit log" text="Important system changes" />
         <SettingsLink href="/settings/data-export" icon={<Archive size={18}/>} title="Data backup" text="Download operational records" />
+        <SettingsLink href="/settings/legacy-import" icon={<UploadCloud size={18}/>} title="Legacy import" text="Import old GymMaster data" />
       </div>
     </div>
   );

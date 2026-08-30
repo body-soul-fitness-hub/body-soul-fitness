@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { deleteMemberPhoto, uploadMemberPhoto } from "@/lib/members/photo";
 import { MEMBER_STATUSES } from "@/lib/members/types";
+import { normalizeToE164 } from "@/lib/whatsapp/phone";
 import type { Enquiry } from "@/lib/enquiries/types";
 
 export type FormState = {
@@ -28,13 +29,13 @@ function fileOrNull(formData: FormData, key: string): File | null {
 }
 
 export async function checkMobileExists(mobileNumber: string, excludeId?: string): Promise<{ id: string; member_id: string; full_name: string } | null> {
-  const trimmed = mobileNumber.trim();
-  if (!trimmed) return null;
+  const normalized = normalizeToE164(mobileNumber);
+  if (!normalized) return null;
 
   let query = supabaseAdmin
     .from("members")
     .select("id, member_id, full_name")
-    .eq("mobile_number", trimmed)
+    .eq("mobile_number", normalized)
     .order("created_at", { ascending: false })
     .limit(1);
 
@@ -66,6 +67,10 @@ export async function createMember(_prevState: FormState, formData: FormData): P
     };
   }
 
+  const normalizedMobile = normalizeToE164(mobileNumber!)!;
+  const rawWhatsapp = str(formData, "whatsapp_number");
+  const normalizedWhatsapp = rawWhatsapp ? normalizeToE164(rawWhatsapp) : null;
+
   let photoPath: string | null = null;
   const photo = fileOrNull(formData, "photo");
   if (photo) {
@@ -82,8 +87,8 @@ export async function createMember(_prevState: FormState, formData: FormData): P
     .from("members")
     .insert({
       full_name: fullName,
-      mobile_number: mobileNumber,
-      whatsapp_number: str(formData, "whatsapp_number"),
+      mobile_number: normalizedMobile,
+      whatsapp_number: normalizedWhatsapp,
       whatsapp_consent: whatsappConsent,
       whatsapp_consent_at: whatsappConsent ? new Date().toISOString() : null,
       whatsapp_promotional_opt_out: formData.get("whatsapp_promotional_opt_out") === "on",
@@ -170,6 +175,10 @@ export async function updateMember(_prevState: FormState, formData: FormData): P
     };
   }
 
+  const normalizedMobile = normalizeToE164(mobileNumber!)!;
+  const rawWhatsapp = str(formData, "whatsapp_number");
+  const normalizedWhatsapp = rawWhatsapp ? normalizeToE164(rawWhatsapp) : null;
+
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from("members")
     .select("photo_path, whatsapp_consent, whatsapp_consent_at")
@@ -199,8 +208,8 @@ export async function updateMember(_prevState: FormState, formData: FormData): P
     .from("members")
     .update({
       full_name: fullName,
-      mobile_number: mobileNumber,
-      whatsapp_number: str(formData, "whatsapp_number"),
+      mobile_number: normalizedMobile,
+      whatsapp_number: normalizedWhatsapp,
       whatsapp_consent: whatsappConsent,
       whatsapp_consent_at: whatsappConsentAt,
       whatsapp_promotional_opt_out: formData.get("whatsapp_promotional_opt_out") === "on",
