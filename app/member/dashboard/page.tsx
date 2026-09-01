@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Dumbbell, ShieldCheck } from "lucide-react";
+import { CalendarDays, DoorOpen, Dumbbell, ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { MemberNav } from "../components/member-nav";
 import { MiniAttendance } from "../components/mini-attendance";
@@ -13,6 +13,7 @@ import type { MemberSubscription } from "@/lib/subscriptions/types";
 import type { Member } from "@/lib/members/types";
 
 type HomeMember = Pick<Member, "id" | "full_name" | "status" | "plan">;
+type OpenVisit = { id: string; checked_in_at: string };
 
 export default function MemberHomePage() {
   const ready = useMemberSession();
@@ -20,6 +21,9 @@ export default function MemberHomePage() {
   const [subscription, setSubscription] = useState<MemberSubscription | null>(null);
   const [todaysWorkouts, setTodaysWorkouts] = useState<MemberWorkout[]>([]);
   const [activeDays, setActiveDays] = useState<Set<string>>(new Set());
+  const [openVisit, setOpenVisit] = useState<OpenVisit | null>(null);
+  const [visitMessage, setVisitMessage] = useState("");
+  const [visitPending, setVisitPending] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,17 +38,33 @@ export default function MemberHomePage() {
       supabase.from("members").select("id,full_name,status,plan").maybeSingle(),
       supabase.from("member_subscriptions").select("*").order("start_date", { ascending: false }),
       supabase.from("member_workouts").select("*").eq("workout_date", today).order("created_at", { ascending: false }),
-      supabase.from("member_checkins").select("checked_in_at").gte("checked_in_at", `${monthStart}T00:00:00`),
+      supabase.from("member_checkins").select("id,checked_in_at,checked_out_at").gte("checked_in_at", `${monthStart}T00:00:00`),
       supabase.from("member_workouts").select("workout_date").gte("workout_date", monthStart),
     ]);
     setMember((memberRow as HomeMember) ?? null);
     setSubscription(pickCurrentSubscription((subs ?? []) as MemberSubscription[]));
     setTodaysWorkouts((todays ?? []) as MemberWorkout[]);
     const days = new Set<string>();
-    (checkinRows ?? []).forEach((c: { checked_in_at: string }) => days.add(c.checked_in_at.slice(0, 10)));
+    const checkins = (checkinRows ?? []) as { id: string; checked_in_at: string; checked_out_at: string | null }[];
+    checkins.forEach((c) => days.add(c.checked_in_at.slice(0, 10)));
     (workoutRows ?? []).forEach((w: { workout_date: string }) => days.add(w.workout_date));
     setActiveDays(days);
+    const open = checkins.find((c) => !c.checked_out_at) ?? null;
+    setOpenVisit(open ? { id: open.id, checked_in_at: open.checked_in_at } : null);
     setLoading(false);
+  }
+
+  async function toggleVisit() {
+    setVisitPending(true);
+    setVisitMessage("");
+    const { data, error } = await supabase.rpc("member_portal_toggle_visit");
+    setVisitPending(false);
+    if (error) {
+      setVisitMessage(error.message);
+      return;
+    }
+    setVisitMessage(`Successfully ${data?.[0]?.action ?? "updated"}.`);
+    void load();
   }
 
   if (!ready || loading || !member) {
@@ -108,6 +128,32 @@ export default function MemberHomePage() {
               </Link>
             </>
           )}
+        </section>
+
+        <section className="mt-4 rounded-3xl border border-[#e5e9e5] bg-white p-5">
+          <div className="flex items-center justify-between">
+            <p className="inline-flex items-center gap-1.5 text-sm font-extrabold text-[#0f1816]">
+              <DoorOpen size={16} className="text-[#577c25]" /> Gym visit
+            </p>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${openVisit ? "bg-[#e7f7c5] text-[#4f6d1e]" : "bg-[#f5f7f4] text-[#6c7773]"}`}>
+              {openVisit ? "Inside now" : "Ready"}
+            </span>
+          </div>
+          <p className="mt-1.5 text-sm font-medium text-[#6c7773]">
+            {openVisit
+              ? `Checked in at ${new Date(openVisit.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+              : "Check in when you arrive at the gym"}
+          </p>
+          <button
+            onClick={toggleVisit}
+            disabled={visitPending}
+            className={`mt-4 w-full rounded-xl py-3 text-center text-sm font-extrabold disabled:opacity-60 ${
+              openVisit ? "border-2 border-[#111c19] text-[#111c19]" : "bg-[#c9f36a] text-[#0f1816]"
+            }`}
+          >
+            {visitPending ? "Updating…" : openVisit ? "Check out now" : "Check in now"}
+          </button>
+          {visitMessage && <p className="mt-3 text-xs font-bold text-[#4f6d1e]">{visitMessage}</p>}
         </section>
 
         <section className="mt-4 rounded-3xl border border-[#e5e9e5] bg-white p-5">
