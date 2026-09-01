@@ -2,7 +2,7 @@
 
 import { createHash, randomBytes } from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { normalizeToE164 } from "@/lib/whatsapp/phone";
+import { normalizeToE164, toSupabaseAuthPhone } from "@/lib/whatsapp/phone";
 
 export type PortalState = { error?: string; success?: string; name?: string };
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
@@ -27,12 +27,15 @@ export async function activateMemberPortal(_previous: PortalState, form: FormDat
   if (!rawMobile || !memberId || !code || password.length < 8) return { error: "Enter the registered mobile number, Member ID, activation code, and an 8+ character password." };
   const mobile = normalizeToE164(rawMobile);
   if (!mobile) return { error: "Enter a valid mobile number." };
+  const authPhone = toSupabaseAuthPhone(mobile)!;
   const { data: member } = await supabaseAdmin.from("members").select("id,full_name,status,auth_user_id,portal_activation_hash,portal_activation_expires_at").eq("mobile_number", mobile).eq("member_id", memberId).maybeSingle();
   if (!member || !member.portal_activation_hash || member.portal_activation_hash !== hash(code) || !member.portal_activation_expires_at || new Date(member.portal_activation_expires_at) < new Date()) return { error: "That activation information is invalid or has expired. Please ask reception for a new code." };
   if (!await canUsePortal(member.id, member.status)) return { error: "Portal access is available only to members with a current active membership." };
   let authId = member.auth_user_id as string | null;
   const credentials = { password, phone_confirm: true };
-  const response = authId ? await supabaseAdmin.auth.admin.updateUserById(authId, credentials) : await supabaseAdmin.auth.admin.createUser({ phone: mobile, ...credentials });
+  // Include the canonical Auth phone on reset as well, so accounts created by
+  // the earlier digits-only implementation are repaired when reception resets access.
+  const response = authId ? await supabaseAdmin.auth.admin.updateUserById(authId, { phone: authPhone, ...credentials }) : await supabaseAdmin.auth.admin.createUser({ phone: authPhone, ...credentials });
   if (response.error || (!authId && !response.data.user)) return { error: response.error?.message ?? "Could not create the member login." };
   authId = authId ?? response.data.user!.id;
   const { error } = await supabaseAdmin.from("members").update({ auth_user_id: authId, portal_activation_hash: null, portal_activation_expires_at: null, portal_activated_at: new Date().toISOString() }).eq("id", member.id);

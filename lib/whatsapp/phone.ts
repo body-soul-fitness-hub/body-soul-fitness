@@ -6,3 +6,10 @@ export function normalizeToE164(raw: string, defaultCountryCode = "91"): string 
   if (!digits) return null;
   return digits.length === 10 ? `${defaultCountryCode}${digits}` : digits;
 }
+
+// Member records intentionally use digits-only phone numbers. Supabase Auth,
+// however, requires the international E.164 representation for phone/password sign-in.
+export function toSupabaseAuthPhone(raw: string): string | null {
+  const digits = normalizeToE164(raw);
+  return digits ? `+${digits}` : null;
+}
