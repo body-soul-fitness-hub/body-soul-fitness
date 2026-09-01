@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
-import { normalizeToE164, toSupabaseAuthPhone } from "@/lib/whatsapp/phone";
+import { normalizeToE164 } from "@/lib/whatsapp/phone";
+import { memberPortalAuthEmail } from "@/lib/member-portal/auth";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
@@ -85,9 +86,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: publicMessage("membership_inactive") }, { status: 403 });
     }
 
-    const authPhone = toSupabaseAuthPhone(mobile)!;
     const authClient = createClient(supabaseUrl, supabasePublishableKey, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data, error } = await authClient.auth.signInWithPassword({ phone: authPhone, password, options: { captchaToken } });
+    const { data, error } = await authClient.auth.signInWithPassword({ email: memberPortalAuthEmail(member.id), password, options: { captchaToken } });
     if (error || !data.session || data.user?.id !== member.auth_user_id) {
       const detail = `${error?.code ?? ""} ${error?.message ?? ""}`.toLowerCase();
       const outcome: Outcome = detail.includes("captcha") || detail.includes("bot") ? "captcha_failed" : "invalid_credentials";
