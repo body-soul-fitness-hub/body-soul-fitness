@@ -1,24 +1,21 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, DoorOpen, Dumbbell, ShieldCheck } from "lucide-react";
+import { CalendarDays, DoorOpen, Dumbbell } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { MemberNav } from "../components/member-nav";
 import { MiniAttendance } from "../components/mini-attendance";
 import { useMemberSession } from "@/lib/member-portal/use-member-session";
-import { pickCurrentSubscription } from "@/lib/member-portal/subscription";
-import { formatIndiaDate, greeting, localDateStr, remainingDays } from "@/lib/member-portal/format";
+import { greeting, localDateStr } from "@/lib/member-portal/format";
 import { summarizeWorkout, type MemberWorkout } from "@/lib/member-portal/types";
-import type { MemberSubscription } from "@/lib/subscriptions/types";
 import type { Member } from "@/lib/members/types";
 
-type HomeMember = Pick<Member, "id" | "full_name" | "status" | "plan">;
+type HomeMember = Pick<Member, "id" | "full_name">;
 type OpenVisit = { id: string; checked_in_at: string };
 
 export default function MemberHomePage() {
   const ready = useMemberSession();
   const [member, setMember] = useState<HomeMember | null>(null);
-  const [subscription, setSubscription] = useState<MemberSubscription | null>(null);
   const [todaysWorkouts, setTodaysWorkouts] = useState<MemberWorkout[]>([]);
   const [activeDays, setActiveDays] = useState<Set<string>>(new Set());
   const [openVisit, setOpenVisit] = useState<OpenVisit | null>(null);
@@ -35,15 +32,13 @@ export default function MemberHomePage() {
   async function load() {
     const today = localDateStr();
     const monthStart = `${today.slice(0, 7)}-01`;
-    const [{ data: memberRow }, { data: subs }, { data: todays }, { data: checkinRows }, { data: workoutRows }] = await Promise.all([
-      supabase.from("members").select("id,full_name,status,plan").maybeSingle(),
-      supabase.from("member_subscriptions").select("*").order("start_date", { ascending: false }),
+    const [{ data: memberRow }, { data: todays }, { data: checkinRows }, { data: workoutRows }] = await Promise.all([
+      supabase.from("members").select("id,full_name").maybeSingle(),
       supabase.from("member_workouts").select("*").eq("workout_date", today).order("created_at", { ascending: false }),
       supabase.from("member_checkins").select("id,checked_in_at,checked_out_at").gte("checked_in_at", `${monthStart}T00:00:00`),
       supabase.from("member_workouts").select("workout_date").gte("workout_date", monthStart),
     ]);
     setMember((memberRow as HomeMember) ?? null);
-    setSubscription(pickCurrentSubscription((subs ?? []) as MemberSubscription[]));
     setTodaysWorkouts((todays ?? []) as MemberWorkout[]);
     const days = new Set<string>();
     const checkins = (checkinRows ?? []) as { id: string; checked_in_at: string; checked_out_at: string | null }[];
@@ -78,7 +73,6 @@ export default function MemberHomePage() {
     );
   }
 
-  const days = remainingDays(subscription?.end_date ?? null);
   const limitReached = !openVisit && checkinsToday >= 2;
 
   return (
@@ -89,51 +83,6 @@ export default function MemberHomePage() {
         <div className="mt-1.5 h-1 w-10 rounded-full bg-[#2563eb]" />
 
         <section className="mt-5 rounded-3xl border border-[#dceaff] bg-white p-5 shadow-[0_12px_35px_rgba(37,99,235,.05)]">
-          {subscription ? (
-            <>
-              <p className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-[#2563eb]">
-                <ShieldCheck size={14} /> Membership {subscription.status === "active" ? "active" : subscription.status}
-              </p>
-              <p className="mt-2 text-xl font-black text-[#10264a]">{subscription.plan_name}</p>
-              {days !== null && (
-                <p className="mt-1 flex items-center gap-1.5 text-sm font-bold text-[#6980a5]">
-                  <span className="inline-block size-2 rounded-full bg-[#2563eb]" />
-                  {days >= 0 ? `${days} days remaining` : "Expired"}
-                </p>
-              )}
-              <Link
-                href="/member/membership"
-                className="mt-4 block rounded-xl bg-[#2563eb] py-3 text-center text-sm font-extrabold text-white shadow-lg shadow-[#2563eb]/15"
-              >
-                View membership
-              </Link>
-              <div className="mt-4 flex items-center justify-between border-t border-[#dceaff] pt-4 text-sm">
-                <div>
-                  <p className="text-xs font-bold text-[#8aa0bf]">Start</p>
-                  <p className="mt-0.5 font-bold text-[#10264a]">{formatIndiaDate(subscription.start_date)}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-bold text-[#8aa0bf]">End</p>
-                  <p className="mt-0.5 font-bold text-[#10264a]">{formatIndiaDate(subscription.end_date)}</p>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="text-xs font-extrabold uppercase tracking-wide text-[#8aa0bf]">Membership</p>
-              <p className="mt-2 text-base font-bold text-[#10264a]">No active membership plan recorded</p>
-              {member.plan && <p className="mt-1 text-sm font-medium text-[#6980a5]">Legacy plan on file: {member.plan}</p>}
-              <Link
-                href="/member/membership"
-                className="mt-4 block rounded-xl bg-[#2563eb] py-3 text-center text-sm font-extrabold text-white shadow-lg shadow-[#2563eb]/15"
-              >
-                View membership
-              </Link>
-            </>
-          )}
-        </section>
-
-        <section className="mt-4 rounded-3xl border border-[#dceaff] bg-white p-5 shadow-[0_12px_35px_rgba(37,99,235,.05)]">
           <div className="flex items-center justify-between">
             <p className="inline-flex items-center gap-1.5 text-sm font-extrabold text-[#10264a]">
               <DoorOpen size={16} className="text-[#2563eb]" /> Gym visit
