@@ -1,20 +1,147 @@
 "use client";
 import { useEffect, useState } from "react";
-import { CalendarDays, CreditCard, DoorOpen, LogOut, QrCode, UserRound } from "lucide-react";
+import Link from "next/link";
+import { CalendarDays, Dumbbell, ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
+import { MemberNav } from "../components/member-nav";
+import { MiniAttendance } from "../components/mini-attendance";
+import { useMemberSession } from "@/lib/member-portal/use-member-session";
+import { pickCurrentSubscription } from "@/lib/member-portal/subscription";
+import { formatIndiaDate, greeting, localDateStr, remainingDays } from "@/lib/member-portal/format";
+import { summarizeWorkout, type MemberWorkout } from "@/lib/member-portal/types";
+import type { MemberSubscription } from "@/lib/subscriptions/types";
+import type { Member } from "@/lib/members/types";
 
-type Profile = { id: string; full_name: string; member_id: string; status: string; plan: string | null };
-type Visit = { id: string; checked_in_at: string; checked_out_at: string | null; duration_minutes: number | null };
-type Subscription = { plan_name: string; end_date: string | null; status: string };
+type HomeMember = Pick<Member, "id" | "full_name" | "status" | "plan">;
 
-export default function MemberDashboard() {
-  const [profile, setProfile] = useState<Profile | null>(null); const [visits, setVisits] = useState<Visit[]>([]); const [subscription, setSubscription] = useState<Subscription | null>(null); const [qr, setQr] = useState(""); const [message, setMessage] = useState(""); const [pending, setPending] = useState(false);
-  async function load() { const { data: sessionData } = await supabase.auth.getSession(); const token = sessionData.session?.access_token; if (!token) return window.location.assign("/member/login"); const [{ data: member }, { data: visitRows }, { data: plans }, qrResponse] = await Promise.all([supabase.from("members").select("id,full_name,member_id,status,plan").maybeSingle(), supabase.from("member_checkins").select("id,checked_in_at,checked_out_at,duration_minutes").order("checked_in_at", { ascending: false }).limit(50), supabase.from("member_subscriptions").select("plan_name,end_date,status").eq("status", "active").order("end_date", { ascending: true }).limit(1), fetch("/api/member/qr", { headers: { Authorization: `Bearer ${token}` } })]); setProfile(member as Profile | null); setVisits((visitRows ?? []) as Visit[]); setSubscription((plans?.[0] as Subscription | undefined) ?? null); const qrData = await qrResponse.json(); if (qrData.payload) setQr(`https://api.qrserver.com/v1/create-qr-code/?size=360x360&format=svg&data=${encodeURIComponent(qrData.payload)}`); }
-  useEffect(() => { void load(); }, []);
-  async function toggleVisit() { setPending(true); setMessage(""); const { data, error } = await supabase.rpc("member_portal_toggle_visit"); setPending(false); if (error) setMessage(error.message); else { setMessage(`Successfully ${data?.[0]?.action ?? "updated"}.`); void load(); } }
-  async function signOut() { await supabase.auth.signOut(); window.location.assign("/member/login"); }
-  if (!profile) return <main className="grid min-h-screen place-items-center bg-[#f7fbff] text-sm font-bold text-[#6980a5]">Loading your member portal…</main>;
-  const open = visits.find((visit) => !visit.checked_out_at); const completed = visits.filter(v => v.checked_out_at).length; const monthVisits = visits.filter(v => new Date(v.checked_in_at).getMonth() === new Date().getMonth()).length;
-  return <main className="min-h-screen bg-[#f7fbff] pb-24 text-[#10264a]"><header className="flex items-center justify-between bg-white px-5 py-4"><p className="inline-flex items-center gap-2 text-sm font-extrabold text-[#2563eb]"><span className="grid size-8 place-items-center rounded-xl bg-[#2563eb] text-white">✦</span> BODY &amp; SOUL</p><button onClick={signOut} aria-label="Sign out" className="rounded-xl p-2 text-[#6980a5]"><LogOut size={19} /></button></header><div className="mx-auto max-w-md px-5 py-6"><p className="text-sm font-bold text-[#6980a5]">{new Date().toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</p><h1 className="mt-1 font-display text-3xl font-black tracking-[-.05em]">Hi, {profile.full_name.split(" ")[0]}.</h1><section className="mt-5 rounded-3xl bg-[#10264a] p-5 text-white"><p className="text-xs font-extrabold uppercase tracking-wider text-[#b8d0ff]">Membership {profile.status}</p><p className="mt-2 text-xl font-black">{subscription?.plan_name ?? profile.plan ?? "Membership"}</p><p className="mt-2 text-sm text-[#b8d0ff]">{subscription?.end_date ? `Valid until ${new Date(`${subscription.end_date}T00:00:00`).toLocaleDateString()}` : "Active membership"}</p></section><section className="mt-5 rounded-3xl border border-[#dceaff] bg-white p-5 text-center"><div className="flex items-center justify-between text-left"><div><p className="flex items-center gap-2 text-sm font-extrabold"><QrCode size={17} className="text-[#2563eb]" /> Your gym pass</p><p className="mt-1 text-xs font-medium text-[#6980a5]">{profile.member_id}</p></div><span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${open ? "bg-[#e7f7c5] text-[#4f6d1e]" : "bg-[#eaf3ff] text-[#2563eb]"}`}>{open ? "Inside now" : "Ready"}</span></div>{qr ? <img src={qr} alt="Your secure gym QR pass" className="mx-auto mt-4 size-48 rounded-2xl border border-[#e7effb] p-2" /> : <div className="mx-auto mt-4 size-48 animate-pulse rounded-2xl bg-[#f0f6ff]" />}<button onClick={toggleVisit} disabled={pending} className="mt-4 w-full rounded-xl bg-[#2563eb] py-3 text-sm font-extrabold text-white disabled:opacity-60"><DoorOpen className="mr-2 inline" size={16} /> {pending ? "Updating…" : open ? "Check out now" : "Check in now"}</button>{message && <p className="mt-3 text-xs font-bold text-[#4f6d1e]">{message}</p>}</section><section className="mt-5 grid grid-cols-2 gap-3"><Metric icon={CalendarDays} label="This month" value={`${monthVisits} visits`} /><Metric icon={CreditCard} label="Total visits" value={`${completed} completed`} /></section><section className="mt-5 rounded-3xl border border-[#dceaff] bg-white p-5"><div className="flex items-center justify-between"><p className="flex items-center gap-2 text-sm font-extrabold"><CalendarDays size={17} className="text-[#2563eb]" /> Recent workouts</p><p className="text-xs font-bold text-[#6980a5]">{visits.length} total</p></div><div className="mt-4 space-y-3">{visits.slice(0, 5).map(v => <div key={v.id} className="flex items-center justify-between border-b border-[#edf2fa] pb-3 last:border-0 last:pb-0"><div><p className="text-sm font-bold">{new Date(v.checked_in_at).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}</p><p className="mt-1 text-xs text-[#6980a5]">{new Date(v.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}{v.checked_out_at ? ` – ${new Date(v.checked_out_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : " · Inside"}</p></div><span className="text-xs font-extrabold text-[#2563eb]">{v.duration_minutes ? `${v.duration_minutes} min` : "—"}</span></div>)}{visits.length === 0 && <p className="py-4 text-center text-sm text-[#6980a5]">Your workout visits will appear here.</p>}</div></section><nav className="fixed inset-x-0 bottom-0 flex justify-around border-t border-[#dceaff] bg-white py-3 text-xs font-bold text-[#6980a5]"><span className="text-[#2563eb]">Home</span><span>Calendar</span><span className="inline-flex items-center gap-1"><UserRound size={14} /> Profile</span></nav></div></main>;
+export default function MemberHomePage() {
+  const ready = useMemberSession();
+  const [member, setMember] = useState<HomeMember | null>(null);
+  const [subscription, setSubscription] = useState<MemberSubscription | null>(null);
+  const [todaysWorkouts, setTodaysWorkouts] = useState<MemberWorkout[]>([]);
+  const [activeDays, setActiveDays] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!ready) return;
+    void load();
+  }, [ready]);
+
+  async function load() {
+    const today = localDateStr();
+    const monthStart = `${today.slice(0, 7)}-01`;
+    const [{ data: memberRow }, { data: subs }, { data: todays }, { data: checkinRows }, { data: workoutRows }] = await Promise.all([
+      supabase.from("members").select("id,full_name,status,plan").maybeSingle(),
+      supabase.from("member_subscriptions").select("*").order("start_date", { ascending: false }),
+      supabase.from("member_workouts").select("*").eq("workout_date", today).order("created_at", { ascending: false }),
+      supabase.from("member_checkins").select("checked_in_at").gte("checked_in_at", `${monthStart}T00:00:00`),
+      supabase.from("member_workouts").select("workout_date").gte("workout_date", monthStart),
+    ]);
+    setMember((memberRow as HomeMember) ?? null);
+    setSubscription(pickCurrentSubscription((subs ?? []) as MemberSubscription[]));
+    setTodaysWorkouts((todays ?? []) as MemberWorkout[]);
+    const days = new Set<string>();
+    (checkinRows ?? []).forEach((c: { checked_in_at: string }) => days.add(c.checked_in_at.slice(0, 10)));
+    (workoutRows ?? []).forEach((w: { workout_date: string }) => days.add(w.workout_date));
+    setActiveDays(days);
+    setLoading(false);
+  }
+
+  if (!ready || loading || !member) {
+    return (
+      <main className="min-h-screen bg-[#f5f7f4]">
+        <MemberNav />
+        <p className="px-5 py-10 text-center text-sm font-bold text-[#6c7773]">Loading your portal…</p>
+      </main>
+    );
+  }
+
+  const days = remainingDays(subscription?.end_date ?? null);
+
+  return (
+    <main className="min-h-screen bg-[#f5f7f4] pb-12">
+      <MemberNav />
+      <div className="mx-auto max-w-md px-5 py-6">
+        <h1 className="font-display text-2xl font-black tracking-[-0.03em] text-[#0f1816]">{greeting(member.full_name.split(" ")[0])}</h1>
+        <div className="mt-1.5 h-1 w-10 rounded-full bg-[#c9f36a]" />
+
+        <section className="mt-5 rounded-3xl border border-[#e5e9e5] bg-white p-5">
+          {subscription ? (
+            <>
+              <p className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-[#577c25]">
+                <ShieldCheck size={14} /> Membership {subscription.status === "active" ? "active" : subscription.status}
+              </p>
+              <p className="mt-2 text-xl font-black text-[#0f1816]">{subscription.plan_name}</p>
+              {days !== null && (
+                <p className="mt-1 flex items-center gap-1.5 text-sm font-bold text-[#6c7773]">
+                  <span className="inline-block size-2 rounded-full bg-[#c9f36a]" />
+                  {days >= 0 ? `${days} days remaining` : "Expired"}
+                </p>
+              )}
+              <Link
+                href="/member/membership"
+                className="mt-4 block rounded-xl border-2 border-[#111c19] py-3 text-center text-sm font-extrabold text-[#111c19]"
+              >
+                View membership
+              </Link>
+              <div className="mt-4 flex items-center justify-between border-t border-[#f0f2f0] pt-4 text-sm">
+                <div>
+                  <p className="text-xs font-bold text-[#89938f]">Start</p>
+                  <p className="mt-0.5 font-bold text-[#0f1816]">{formatIndiaDate(subscription.start_date)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-bold text-[#89938f]">End</p>
+                  <p className="mt-0.5 font-bold text-[#0f1816]">{formatIndiaDate(subscription.end_date)}</p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-xs font-extrabold uppercase tracking-wide text-[#89938f]">Membership</p>
+              <p className="mt-2 text-base font-bold text-[#0f1816]">No active membership plan recorded</p>
+              {member.plan && <p className="mt-1 text-sm font-medium text-[#6c7773]">Legacy plan on file: {member.plan}</p>}
+              <Link
+                href="/member/membership"
+                className="mt-4 block rounded-xl border-2 border-[#111c19] py-3 text-center text-sm font-extrabold text-[#111c19]"
+              >
+                View membership
+              </Link>
+            </>
+          )}
+        </section>
+
+        <section className="mt-4 rounded-3xl border border-[#e5e9e5] bg-white p-5">
+          <p className="inline-flex items-center gap-1.5 text-sm font-extrabold text-[#0f1816]">
+            <Dumbbell size={16} className="text-[#577c25]" /> Today&apos;s workout
+          </p>
+          {todaysWorkouts.length > 0 ? (
+            <div className="mt-3 space-y-2">
+              {todaysWorkouts.map((w) => (
+                <p key={w.id} className="rounded-xl bg-[#f5f7f4] px-3 py-2 text-sm font-bold text-[#0f1816]">
+                  {summarizeWorkout(w)}
+                </p>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-1.5 text-sm font-medium text-[#6c7773]">Log your cardio or strength training</p>
+          )}
+          <Link href="/member/workout" className="mt-4 block rounded-xl bg-[#c9f36a] py-3 text-center text-sm font-extrabold text-[#0f1816]">
+            {todaysWorkouts.length > 0 ? "Log another workout" : "Log workout"}
+          </Link>
+        </section>
+
+        <section className="mt-4 rounded-3xl bg-[#111c19] p-5 text-white">
+          <div className="flex items-center justify-between">
+            <p className="inline-flex items-center gap-1.5 text-sm font-extrabold">
+              <CalendarDays size={16} className="text-[#c9f36a]" /> Monthly attendance
+            </p>
+            <Link href="/member/calendar" className="text-xs font-extrabold text-[#c9f36a]">
+              View full calendar ›
+            </Link>
+          </div>
+          <MiniAttendance activeDays={activeDays} />
+        </section>
+      </div>
+    </main>
+  );
 }
-function Metric({ icon: Icon, label, value }: { icon: typeof CalendarDays; label: string; value: string }) { return <div className="rounded-2xl border border-[#dceaff] bg-white p-4"><Icon size={18} className="text-[#2563eb]" /><p className="mt-3 text-xs font-bold text-[#6980a5]">{label}</p><p className="mt-1 text-sm font-black">{value}</p></div>; }
