@@ -22,6 +22,7 @@ export default function MemberHomePage() {
   const [todaysWorkouts, setTodaysWorkouts] = useState<MemberWorkout[]>([]);
   const [activeDays, setActiveDays] = useState<Set<string>>(new Set());
   const [openVisit, setOpenVisit] = useState<OpenVisit | null>(null);
+  const [checkinsToday, setCheckinsToday] = useState(0);
   const [visitMessage, setVisitMessage] = useState("");
   const [visitPending, setVisitPending] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -51,6 +52,7 @@ export default function MemberHomePage() {
     setActiveDays(days);
     const open = checkins.find((c) => !c.checked_out_at) ?? null;
     setOpenVisit(open ? { id: open.id, checked_in_at: open.checked_in_at } : null);
+    setCheckinsToday(checkins.filter((c) => c.checked_in_at.slice(0, 10) === today).length);
     setLoading(false);
   }
 
@@ -77,6 +79,7 @@ export default function MemberHomePage() {
   }
 
   const days = remainingDays(subscription?.end_date ?? null);
+  const limitReached = !openVisit && checkinsToday >= 2;
 
   return (
     <main className="min-h-screen bg-[#f7fbff] pb-12">
@@ -135,23 +138,29 @@ export default function MemberHomePage() {
             <p className="inline-flex items-center gap-1.5 text-sm font-extrabold text-[#10264a]">
               <DoorOpen size={16} className="text-[#2563eb]" /> Gym visit
             </p>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${openVisit ? "bg-[#e7f7c5] text-[#4f6d1e]" : "bg-[#eaf3ff] text-[#2563eb]"}`}>
-              {openVisit ? "Inside now" : "Ready"}
+            <span
+              className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${
+                openVisit ? "bg-[#e7f7c5] text-[#4f6d1e]" : limitReached ? "bg-[#f0f4fa] text-[#6980a5]" : "bg-[#eaf3ff] text-[#2563eb]"
+              }`}
+            >
+              {openVisit ? "Inside now" : limitReached ? "Limit reached" : "Ready"}
             </span>
           </div>
           <p className="mt-1.5 text-sm font-medium text-[#6980a5]">
             {openVisit
               ? `Checked in at ${new Date(openVisit.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-              : "Check in when you arrive at the gym"}
+              : limitReached
+                ? "You've checked in twice today already"
+                : "Check in when you arrive at the gym"}
           </p>
           <button
             onClick={toggleVisit}
-            disabled={visitPending}
+            disabled={visitPending || limitReached}
             className={`mt-4 w-full rounded-xl py-3 text-center text-sm font-extrabold text-white shadow-lg disabled:opacity-60 ${
               openVisit ? "bg-[#10264a] shadow-[#10264a]/15" : "bg-[#2563eb] shadow-[#2563eb]/15"
             }`}
           >
-            {visitPending ? "Updating…" : openVisit ? "Check out now" : "Check in now"}
+            {visitPending ? "Updating…" : openVisit ? "Check out now" : limitReached ? "Limit reached" : "Check in now"}
           </button>
           {visitMessage && <p className="mt-3 text-xs font-bold text-[#4f6d1e]">{visitMessage}</p>}
         </section>
