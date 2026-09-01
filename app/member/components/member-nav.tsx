@@ -17,12 +17,12 @@ const TABS = [
 export function MemberNav() {
   const pathname = usePathname() ?? "";
   return (
-    <header className="sticky top-0 z-30 bg-[#111c19] text-white">
+    <header className="sticky top-0 z-30 bg-[#10264a] text-white">
       <div className="mx-auto max-w-md px-5 pt-4 pb-2 text-center">
         <p className="font-display text-lg font-black tracking-wide">
-          BODY <span className="text-[#c9f36a]">&amp;</span> SOUL
+          BODY <span className="text-[#8eb5ff]">&amp;</span> SOUL
         </p>
-        <p className="mt-0.5 text-[10px] font-extrabold tracking-[0.35em] text-[#c9f36a]">FITNESS CENTER</p>
+        <p className="mt-0.5 text-[10px] font-extrabold tracking-[0.35em] text-[#8eb5ff]">FITNESS CENTER</p>
       </div>
       <nav className="mx-auto flex max-w-md items-stretch justify-around border-t border-white/10">
         {TABS.map(({ href, label, icon: Icon, match }) => {
@@ -33,7 +33,7 @@ export function MemberNav() {
               href={href}
               aria-current={active ? "page" : undefined}
               className={`flex flex-1 flex-col items-center gap-1 border-b-2 py-3 text-xs font-bold transition-colors ${
-                active ? "border-[#c9f36a] text-[#c9f36a]" : "border-transparent text-white/70"
+                active ? "border-[#8eb5ff] text-[#8eb5ff]" : "border-transparent text-white/70"
               }`}
             >
               <Icon size={20} />

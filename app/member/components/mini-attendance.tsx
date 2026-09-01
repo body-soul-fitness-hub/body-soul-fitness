@@ -43,7 +43,7 @@ export function MiniAttendance({ activeDays }: { activeDays: Set<string> }) {
                 <div
                   key={key}
                   className={`grid aspect-square place-items-center rounded-lg text-xs font-extrabold ${
-                    isFuture ? "text-white/20" : active ? "bg-[#c9f36a] text-[#0f1816]" : "border border-white/15 text-white/60"
+                    isFuture ? "text-white/20" : active ? "bg-[#2f6df1] text-white" : "border border-white/15 text-white/60"
                   }`}
                 >
                   {d.getDate()}
@@ -55,7 +55,7 @@ export function MiniAttendance({ activeDays }: { activeDays: Set<string> }) {
       </div>
       <div className="mt-3 flex items-center gap-4 text-[11px] font-bold text-white/60">
         <span className="inline-flex items-center gap-1.5">
-          <span className="size-2.5 rounded-sm bg-[#c9f36a]" /> Completed
+          <span className="size-2.5 rounded-sm bg-[#2f6df1]" /> Completed
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="size-2.5 rounded-sm border border-white/40" /> Not completed

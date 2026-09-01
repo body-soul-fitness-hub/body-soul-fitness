@@ -48,9 +48,9 @@ export default function MemberProfilePage() {
 
   if (!ready || loading || !member) {
     return (
-      <main className="min-h-screen bg-[#f5f7f4]">
+      <main className="min-h-screen bg-[#f7fbff]">
         <MemberNav />
-        <p className="px-5 py-10 text-center text-sm font-bold text-[#6c7773]">Loading…</p>
+        <p className="px-5 py-10 text-center text-sm font-bold text-[#6980a5]">Loading…</p>
       </main>
     );
   }
@@ -58,26 +58,26 @@ export default function MemberProfilePage() {
   const days = remainingDays(subscription?.end_date ?? null);
 
   return (
-    <main className="min-h-screen bg-[#f5f7f4] pb-12">
+    <main className="min-h-screen bg-[#f7fbff] pb-12">
       <MemberNav />
       <div className="mx-auto max-w-md px-5 py-6">
         <div className="flex items-center gap-4">
           {photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={photoUrl} alt={member.full_name} className="size-16 rounded-2xl border border-[#e5e9e5] object-cover" />
+            <img src={photoUrl} alt={member.full_name} className="size-16 rounded-2xl border border-[#dceaff] object-cover" />
           ) : (
-            <div className="grid size-16 place-items-center rounded-2xl border border-[#e5e9e5] bg-white text-[#89938f]">
+            <div className="grid size-16 place-items-center rounded-2xl border border-[#dceaff] bg-white text-[#8aa0bf]">
               <UserCircle size={30} />
             </div>
           )}
           <div>
-            <h1 className="font-display text-xl font-black text-[#0f1816]">{member.full_name}</h1>
-            <p className="text-xs font-extrabold uppercase tracking-wide text-[#577c25]">{member.member_id}</p>
+            <h1 className="font-display text-xl font-black text-[#10264a]">{member.full_name}</h1>
+            <p className="text-xs font-extrabold uppercase tracking-wide text-[#2563eb]">{member.member_id}</p>
           </div>
         </div>
 
-        <section className="mt-5 rounded-3xl border border-[#e5e9e5] bg-white p-5">
-          <p className="text-sm font-extrabold text-[#0f1816]">Contact details</p>
+        <section className="mt-5 rounded-3xl border border-[#dceaff] bg-white p-5 shadow-[0_12px_35px_rgba(37,99,235,.05)]">
+          <p className="text-sm font-extrabold text-[#10264a]">Contact details</p>
           <dl className="mt-3 space-y-3">
             <Detail label="Mobile number" value={member.mobile_number} />
             <Detail label="Email" value={member.email} />
@@ -87,27 +87,27 @@ export default function MemberProfilePage() {
           </dl>
         </section>
 
-        <section className="mt-4 rounded-3xl border border-[#e5e9e5] bg-white p-5">
-          <p className="text-sm font-extrabold text-[#0f1816]">Membership</p>
+        <section className="mt-4 rounded-3xl border border-[#dceaff] bg-white p-5 shadow-[0_12px_35px_rgba(37,99,235,.05)]">
+          <p className="text-sm font-extrabold text-[#10264a]">Membership</p>
           {subscription ? (
             <>
-              <p className="mt-2 text-base font-black text-[#0f1816]">{subscription.plan_name}</p>
-              <p className="mt-1 text-sm font-medium text-[#6c7773]">
+              <p className="mt-2 text-base font-black text-[#10264a]">{subscription.plan_name}</p>
+              <p className="mt-1 text-sm font-medium text-[#6980a5]">
                 {days !== null ? (days >= 0 ? `${days} days remaining` : "Expired") : "No end date on file"}
               </p>
             </>
           ) : (
-            <p className="mt-2 text-sm font-medium text-[#6c7773]">No active membership plan recorded</p>
+            <p className="mt-2 text-sm font-medium text-[#6980a5]">No active membership plan recorded</p>
           )}
-          <Link href="/member/membership" className="mt-3 inline-block text-sm font-extrabold text-[#577c25]">
+          <Link href="/member/membership" className="mt-3 inline-block text-sm font-extrabold text-[#2563eb]">
             View membership ›
           </Link>
         </section>
 
-        <section className="mt-4 rounded-3xl border border-[#e5e9e5] bg-white p-5">
-          <p className="text-sm font-extrabold text-[#0f1816]">Workout history</p>
-          <p className="mt-2 text-sm font-medium text-[#6c7773]">{workoutCount} workout{workoutCount === 1 ? "" : "s"} logged in total</p>
-          <Link href="/member/calendar" className="mt-3 inline-block text-sm font-extrabold text-[#577c25]">
+        <section className="mt-4 rounded-3xl border border-[#dceaff] bg-white p-5 shadow-[0_12px_35px_rgba(37,99,235,.05)]">
+          <p className="text-sm font-extrabold text-[#10264a]">Workout history</p>
+          <p className="mt-2 text-sm font-medium text-[#6980a5]">{workoutCount} workout{workoutCount === 1 ? "" : "s"} logged in total</p>
+          <Link href="/member/calendar" className="mt-3 inline-block text-sm font-extrabold text-[#2563eb]">
             View calendar ›
           </Link>
         </section>
@@ -118,9 +118,9 @@ export default function MemberProfilePage() {
 
 function Detail({ label, value }: { label: string; value: string | null | undefined }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-[#f0f2f0] pb-2.5 last:border-0 last:pb-0">
-      <dt className="text-xs font-bold text-[#89938f]">{label}</dt>
-      <dd className="text-right text-sm font-bold text-[#0f1816]">{value || "—"}</dd>
+    <div className="flex items-center justify-between gap-3 border-b border-[#dceaff] pb-2.5 last:border-0 last:pb-0">
+      <dt className="text-xs font-bold text-[#8aa0bf]">{label}</dt>
+      <dd className="text-right text-sm font-bold text-[#10264a]">{value || "—"}</dd>
     </div>
   );
 }

@@ -83,37 +83,37 @@ export default function MemberCalendarPage() {
 
   if (!ready) {
     return (
-      <main className="min-h-screen bg-[#f5f7f4]">
+      <main className="min-h-screen bg-[#f7fbff]">
         <MemberNav />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#f5f7f4] pb-12">
+    <main className="min-h-screen bg-[#f7fbff] pb-12">
       <MemberNav />
       <div className="mx-auto max-w-md px-5 py-6">
         <div className="flex items-center justify-between">
-          <button onClick={() => changeMonth(-1)} aria-label="Previous month" className="grid size-10 place-items-center rounded-xl border border-[#e5e9e5] bg-white">
+          <button onClick={() => changeMonth(-1)} aria-label="Previous month" className="grid size-10 place-items-center rounded-xl border border-[#dceaff] bg-white text-[#10264a]">
             <ChevronLeft size={18} />
           </button>
-          <h1 className="font-display text-lg font-black text-[#0f1816]">
+          <h1 className="font-display text-lg font-black text-[#10264a]">
             {new Date(year, month, 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
           </h1>
-          <button onClick={() => changeMonth(1)} aria-label="Next month" className="grid size-10 place-items-center rounded-xl border border-[#e5e9e5] bg-white">
+          <button onClick={() => changeMonth(1)} aria-label="Next month" className="grid size-10 place-items-center rounded-xl border border-[#dceaff] bg-white text-[#10264a]">
             <ChevronRight size={18} />
           </button>
         </div>
 
-        <div className="mt-5 rounded-3xl border border-[#e5e9e5] bg-white p-4">
-          <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-extrabold text-[#89938f]">
+        <div className="mt-5 rounded-3xl border border-[#dceaff] bg-white p-4 shadow-[0_12px_35px_rgba(37,99,235,.05)]">
+          <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-extrabold text-[#8aa0bf]">
             {DOW.map((d) => (
               <span key={d}>{d}</span>
             ))}
           </div>
           <div className="mt-2 space-y-1">
             {loading ? (
-              <p className="py-8 text-center text-sm font-bold text-[#6c7773]">Loading…</p>
+              <p className="py-8 text-center text-sm font-bold text-[#6980a5]">Loading…</p>
             ) : (
               weeks.map((week, wi) => (
                 <div key={wi} className="grid grid-cols-7 gap-1">
@@ -128,8 +128,8 @@ export default function MemberCalendarPage() {
                         key={dateStr}
                         onClick={() => setSelected(hasWorkout || hasCheckin ? dateStr : null)}
                         className={`grid aspect-square place-items-center rounded-xl text-sm font-extrabold transition-colors ${
-                          hasWorkout ? "bg-[#c9f36a] text-[#0f1816]" : hasCheckin ? "border-2 border-[#c9f36a] text-[#0f1816]" : "text-[#89938f]"
-                        } ${isSelected ? "ring-2 ring-[#111c19]" : ""}`}
+                          hasWorkout ? "bg-[#2563eb] text-white" : hasCheckin ? "border-2 border-[#2563eb] text-[#10264a]" : "text-[#8aa0bf]"
+                        } ${isSelected ? "ring-2 ring-[#10264a]" : ""}`}
                       >
                         {day}
                       </button>
@@ -139,38 +139,38 @@ export default function MemberCalendarPage() {
               ))
             )}
           </div>
-          <div className="mt-4 flex items-center gap-4 border-t border-[#f0f2f0] pt-3 text-[11px] font-bold text-[#6c7773]">
+          <div className="mt-4 flex items-center gap-4 border-t border-[#dceaff] pt-3 text-[11px] font-bold text-[#6980a5]">
             <span className="inline-flex items-center gap-1.5">
-              <span className="size-2.5 rounded-sm bg-[#c9f36a]" /> Workout logged
+              <span className="size-2.5 rounded-sm bg-[#2563eb]" /> Workout logged
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="size-2.5 rounded-sm border-2 border-[#c9f36a]" /> Gym check-in
+              <span className="size-2.5 rounded-sm border-2 border-[#2563eb]" /> Gym check-in
             </span>
           </div>
         </div>
 
         {selected && (
-          <section className="mt-4 rounded-3xl border border-[#e5e9e5] bg-white p-5">
-            <p className="text-sm font-extrabold text-[#0f1816]">
+          <section className="mt-4 rounded-3xl border border-[#dceaff] bg-white p-5 shadow-[0_12px_35px_rgba(37,99,235,.05)]">
+            <p className="text-sm font-extrabold text-[#10264a]">
               {new Date(`${selected}T00:00:00`).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}
             </p>
             <div className="mt-3 space-y-3">
               {selectedWorkouts.map((w) => (
-                <div key={w.id} className="rounded-xl bg-[#f5f7f4] p-3">
-                  <p className="text-sm font-extrabold text-[#0f1816]">{summarizeWorkout(w)}</p>
-                  {w.notes && <p className="mt-1 text-xs font-medium text-[#6c7773]">{w.notes}</p>}
+                <div key={w.id} className="rounded-xl bg-[#f7fbff] p-3">
+                  <p className="text-sm font-extrabold text-[#10264a]">{summarizeWorkout(w)}</p>
+                  {w.notes && <p className="mt-1 text-xs font-medium text-[#6980a5]">{w.notes}</p>}
                 </div>
               ))}
               {selectedCheckins.map((c) => (
-                <div key={c.id} className="rounded-xl bg-[#f5f7f4] p-3">
-                  <p className="text-sm font-extrabold text-[#0f1816]">Gym check-in</p>
-                  <p className="mt-1 text-xs font-medium text-[#6c7773]">
+                <div key={c.id} className="rounded-xl bg-[#f7fbff] p-3">
+                  <p className="text-sm font-extrabold text-[#10264a]">Gym check-in</p>
+                  <p className="mt-1 text-xs font-medium text-[#6980a5]">
                     {new Date(c.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     {c.checked_out_at ? ` – ${new Date(c.checked_out_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : " · Still inside"}
                   </p>
                 </div>
               ))}
-              {selectedWorkouts.length === 0 && selectedCheckins.length === 0 && <p className="text-sm font-medium text-[#6c7773]">No activity on this date.</p>}
+              {selectedWorkouts.length === 0 && selectedCheckins.length === 0 && <p className="text-sm font-medium text-[#6980a5]">No activity on this date.</p>}
             </div>
           </section>
         )}

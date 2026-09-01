@@ -71,7 +71,7 @@ export default function LogWorkoutPage() {
 
   if (!ready) {
     return (
-      <main className="min-h-screen bg-[#f5f7f4]">
+      <main className="min-h-screen bg-[#f7fbff]">
         <MemberNav />
       </main>
     );
@@ -79,16 +79,16 @@ export default function LogWorkoutPage() {
 
   if (success) {
     return (
-      <main className="min-h-screen bg-[#f5f7f4] pb-12">
+      <main className="min-h-screen bg-[#f7fbff] pb-12">
         <MemberNav />
         <div className="mx-auto max-w-md px-5 py-14 text-center">
-          <div className="mx-auto grid size-16 place-items-center rounded-full bg-[#c9f36a]">
-            <Dumbbell size={28} className="text-[#0f1816]" />
+          <div className="mx-auto grid size-16 place-items-center rounded-full bg-[#2563eb]">
+            <Dumbbell size={28} className="text-white" />
           </div>
-          <h1 className="mt-5 font-display text-2xl font-black text-[#0f1816]">Workout saved</h1>
-          <p className="mt-2 text-sm font-medium text-[#6c7773]">Nice work. It&apos;s now on your Home page and calendar.</p>
+          <h1 className="mt-5 font-display text-2xl font-black text-[#10264a]">Workout saved</h1>
+          <p className="mt-2 text-sm font-medium text-[#6980a5]">Nice work. It&apos;s now on your Home page and calendar.</p>
           <div className="mt-6 flex flex-col gap-3">
-            <button onClick={() => router.push("/member/dashboard")} className="rounded-xl bg-[#111c19] py-3.5 text-sm font-extrabold text-white">
+            <button onClick={() => router.push("/member/dashboard")} className="rounded-xl bg-[#2563eb] py-3.5 text-sm font-extrabold text-white shadow-lg shadow-[#2563eb]/15">
               Back to home
             </button>
             <button
@@ -98,7 +98,7 @@ export default function LogWorkoutPage() {
                 setDuration("");
                 setDistance("");
               }}
-              className="rounded-xl border-2 border-[#e5e9e5] bg-white py-3.5 text-sm font-extrabold text-[#0f1816]"
+              className="rounded-xl border-2 border-[#dceaff] bg-white py-3.5 text-sm font-extrabold text-[#10264a]"
             >
               Log another workout
             </button>
@@ -109,10 +109,10 @@ export default function LogWorkoutPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f5f7f4] pb-16">
+    <main className="min-h-screen bg-[#f7fbff] pb-16">
       <MemberNav />
       <div className="mx-auto max-w-md px-5 py-6">
-        <h1 className="font-display text-2xl font-black tracking-[-0.03em] text-[#0f1816]">Today&apos;s workout</h1>
+        <h1 className="font-display text-2xl font-black tracking-[-0.03em] text-[#10264a]">Today&apos;s workout</h1>
 
         <div className="mt-5 grid grid-cols-2 gap-3">
           <ToggleButton active={type === "strength"} onClick={() => setType("strength")} icon={Dumbbell} label="Strength" />
@@ -121,7 +121,7 @@ export default function LogWorkoutPage() {
 
         {type === "strength" ? (
           <>
-            <h2 className="mt-6 text-base font-extrabold text-[#0f1816]">What did you train?</h2>
+            <h2 className="mt-6 text-base font-extrabold text-[#10264a]">What did you train?</h2>
             <div className="mt-3 grid grid-cols-3 gap-2.5">
               {BODY_AREAS.filter((a) => a.value !== "full_body").map((area) => (
                 <ChipButton key={area.value} active={bodyAreas.includes(area.value)} onClick={() => toggleBodyArea(area.value)} label={area.label} />
@@ -133,7 +133,7 @@ export default function LogWorkoutPage() {
           </>
         ) : (
           <>
-            <h2 className="mt-6 text-base font-extrabold text-[#0f1816]">Choose cardio</h2>
+            <h2 className="mt-6 text-base font-extrabold text-[#10264a]">Choose cardio</h2>
             <div className="mt-3 grid grid-cols-3 gap-2.5">
               {CARDIO_ACTIVITIES.map((activity) => (
                 <ChipButton
@@ -154,7 +154,7 @@ export default function LogWorkoutPage() {
             onChange={(e) => setDuration(e.target.value)}
             placeholder="e.g. 30"
             aria-label="Duration in minutes"
-            className="w-full rounded-xl border border-[#e5e9e5] bg-white px-4 py-3.5 text-base font-bold text-[#0f1816] outline-none focus:border-[#111c19]"
+            className="w-full rounded-xl border border-[#dceaff] bg-white px-4 py-3.5 text-base font-bold text-[#10264a] outline-none focus:border-[#2563eb]"
           />
         </Field>
 
@@ -167,11 +167,11 @@ export default function LogWorkoutPage() {
                 onChange={(e) => setDistance(e.target.value)}
                 placeholder="e.g. 3.5 km"
                 aria-label="Distance in kilometers"
-                className="w-full rounded-xl border border-[#e5e9e5] bg-white px-4 py-3.5 text-base font-bold text-[#0f1816] outline-none focus:border-[#111c19]"
+                className="w-full rounded-xl border border-[#dceaff] bg-white px-4 py-3.5 text-base font-bold text-[#10264a] outline-none focus:border-[#2563eb]"
               />
             </Field>
             <div className="mt-5">
-              <p className="text-sm font-extrabold text-[#0f1816]">Intensity</p>
+              <p className="text-sm font-extrabold text-[#10264a]">Intensity</p>
               <div className="mt-2 grid grid-cols-3 gap-2.5">
                 {INTENSITIES.map((level) => (
                   <ToggleButton key={level.value} compact active={intensity === level.value} onClick={() => setIntensity(level.value)} label={level.label} />
@@ -187,17 +187,21 @@ export default function LogWorkoutPage() {
             onChange={(e) => setNotes(e.target.value)}
             placeholder={type === "strength" ? "Shoulder press + biceps" : "Easy run after strength"}
             rows={3}
-            className="w-full resize-none rounded-xl border border-[#e5e9e5] bg-white px-4 py-3.5 text-base font-medium text-[#0f1816] outline-none focus:border-[#111c19]"
+            className="w-full resize-none rounded-xl border border-[#dceaff] bg-white px-4 py-3.5 text-base font-medium text-[#10264a] outline-none focus:border-[#2563eb]"
           />
         </Field>
 
         {error && (
-          <p className="mt-4 rounded-xl bg-[#ffe5dc] px-4 py-3 text-sm font-bold text-[#a94f37]" role="alert">
+          <p className="mt-4 rounded-xl bg-[#fff0f1] px-4 py-3 text-sm font-bold text-[#a83848]" role="alert">
             {error}
           </p>
         )}
 
-        <button onClick={save} disabled={pending} className="mt-6 w-full rounded-xl bg-[#c9f36a] py-4 text-base font-extrabold text-[#0f1816] disabled:opacity-60">
+        <button
+          onClick={save}
+          disabled={pending}
+          className="mt-6 w-full rounded-xl bg-[#2563eb] py-4 text-base font-extrabold text-white shadow-lg shadow-[#2563eb]/15 disabled:opacity-60"
+        >
           {pending ? "Saving…" : "Save workout"}
         </button>
       </div>
@@ -224,7 +228,7 @@ function ToggleButton({
       onClick={onClick}
       aria-pressed={active}
       className={`flex items-center justify-center gap-2 rounded-2xl border-2 font-extrabold ${compact ? "py-3 text-sm" : "py-4 text-sm"} ${
-        active ? "border-[#c9f36a] bg-[#c9f36a] text-[#0f1816]" : "border-[#e5e9e5] bg-white text-[#0f1816]"
+        active ? "border-[#2563eb] bg-[#2563eb] text-white" : "border-[#dceaff] bg-white text-[#10264a]"
       }`}
     >
       {Icon && <Icon size={18} />}
@@ -240,7 +244,7 @@ function ChipButton({ active, onClick, label, wide }: { active: boolean; onClick
       onClick={onClick}
       aria-pressed={active}
       className={`${wide ? "w-full" : ""} rounded-2xl border-2 px-2 py-4 text-center text-sm font-extrabold ${
-        active ? "border-[#c9f36a] bg-[#c9f36a] text-[#0f1816]" : "border-[#e5e9e5] bg-white text-[#0f1816]"
+        active ? "border-[#2563eb] bg-[#2563eb] text-white" : "border-[#dceaff] bg-white text-[#10264a]"
       }`}
     >
       {label}
@@ -251,7 +255,7 @@ function ChipButton({ active, onClick, label, wide }: { active: boolean; onClick
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="mt-5 block">
-      <span className="text-sm font-extrabold text-[#0f1816]">{label}</span>
+      <span className="text-sm font-extrabold text-[#10264a]">{label}</span>
       <div className="mt-2">{children}</div>
     </label>
   );

@@ -69,9 +69,9 @@ export default function MemberHomePage() {
 
   if (!ready || loading || !member) {
     return (
-      <main className="min-h-screen bg-[#f5f7f4]">
+      <main className="min-h-screen bg-[#f7fbff]">
         <MemberNav />
-        <p className="px-5 py-10 text-center text-sm font-bold text-[#6c7773]">Loading your portal…</p>
+        <p className="px-5 py-10 text-center text-sm font-bold text-[#6980a5]">Loading your portal…</p>
       </main>
     );
   }
@@ -79,50 +79,50 @@ export default function MemberHomePage() {
   const days = remainingDays(subscription?.end_date ?? null);
 
   return (
-    <main className="min-h-screen bg-[#f5f7f4] pb-12">
+    <main className="min-h-screen bg-[#f7fbff] pb-12">
       <MemberNav />
       <div className="mx-auto max-w-md px-5 py-6">
-        <h1 className="font-display text-2xl font-black tracking-[-0.03em] text-[#0f1816]">{greeting(member.full_name.split(" ")[0])}</h1>
-        <div className="mt-1.5 h-1 w-10 rounded-full bg-[#c9f36a]" />
+        <h1 className="font-display text-2xl font-black tracking-[-0.03em] text-[#10264a]">{greeting(member.full_name.split(" ")[0])}</h1>
+        <div className="mt-1.5 h-1 w-10 rounded-full bg-[#2563eb]" />
 
-        <section className="mt-5 rounded-3xl border border-[#e5e9e5] bg-white p-5">
+        <section className="mt-5 rounded-3xl border border-[#dceaff] bg-white p-5 shadow-[0_12px_35px_rgba(37,99,235,.05)]">
           {subscription ? (
             <>
-              <p className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-[#577c25]">
+              <p className="inline-flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wide text-[#2563eb]">
                 <ShieldCheck size={14} /> Membership {subscription.status === "active" ? "active" : subscription.status}
               </p>
-              <p className="mt-2 text-xl font-black text-[#0f1816]">{subscription.plan_name}</p>
+              <p className="mt-2 text-xl font-black text-[#10264a]">{subscription.plan_name}</p>
               {days !== null && (
-                <p className="mt-1 flex items-center gap-1.5 text-sm font-bold text-[#6c7773]">
-                  <span className="inline-block size-2 rounded-full bg-[#c9f36a]" />
+                <p className="mt-1 flex items-center gap-1.5 text-sm font-bold text-[#6980a5]">
+                  <span className="inline-block size-2 rounded-full bg-[#2563eb]" />
                   {days >= 0 ? `${days} days remaining` : "Expired"}
                 </p>
               )}
               <Link
                 href="/member/membership"
-                className="mt-4 block rounded-xl border-2 border-[#111c19] py-3 text-center text-sm font-extrabold text-[#111c19]"
+                className="mt-4 block rounded-xl bg-[#2563eb] py-3 text-center text-sm font-extrabold text-white shadow-lg shadow-[#2563eb]/15"
               >
                 View membership
               </Link>
-              <div className="mt-4 flex items-center justify-between border-t border-[#f0f2f0] pt-4 text-sm">
+              <div className="mt-4 flex items-center justify-between border-t border-[#dceaff] pt-4 text-sm">
                 <div>
-                  <p className="text-xs font-bold text-[#89938f]">Start</p>
-                  <p className="mt-0.5 font-bold text-[#0f1816]">{formatIndiaDate(subscription.start_date)}</p>
+                  <p className="text-xs font-bold text-[#8aa0bf]">Start</p>
+                  <p className="mt-0.5 font-bold text-[#10264a]">{formatIndiaDate(subscription.start_date)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs font-bold text-[#89938f]">End</p>
-                  <p className="mt-0.5 font-bold text-[#0f1816]">{formatIndiaDate(subscription.end_date)}</p>
+                  <p className="text-xs font-bold text-[#8aa0bf]">End</p>
+                  <p className="mt-0.5 font-bold text-[#10264a]">{formatIndiaDate(subscription.end_date)}</p>
                 </div>
               </div>
             </>
           ) : (
             <>
-              <p className="text-xs font-extrabold uppercase tracking-wide text-[#89938f]">Membership</p>
-              <p className="mt-2 text-base font-bold text-[#0f1816]">No active membership plan recorded</p>
-              {member.plan && <p className="mt-1 text-sm font-medium text-[#6c7773]">Legacy plan on file: {member.plan}</p>}
+              <p className="text-xs font-extrabold uppercase tracking-wide text-[#8aa0bf]">Membership</p>
+              <p className="mt-2 text-base font-bold text-[#10264a]">No active membership plan recorded</p>
+              {member.plan && <p className="mt-1 text-sm font-medium text-[#6980a5]">Legacy plan on file: {member.plan}</p>}
               <Link
                 href="/member/membership"
-                className="mt-4 block rounded-xl border-2 border-[#111c19] py-3 text-center text-sm font-extrabold text-[#111c19]"
+                className="mt-4 block rounded-xl bg-[#2563eb] py-3 text-center text-sm font-extrabold text-white shadow-lg shadow-[#2563eb]/15"
               >
                 View membership
               </Link>
@@ -130,16 +130,16 @@ export default function MemberHomePage() {
           )}
         </section>
 
-        <section className="mt-4 rounded-3xl border border-[#e5e9e5] bg-white p-5">
+        <section className="mt-4 rounded-3xl border border-[#dceaff] bg-white p-5 shadow-[0_12px_35px_rgba(37,99,235,.05)]">
           <div className="flex items-center justify-between">
-            <p className="inline-flex items-center gap-1.5 text-sm font-extrabold text-[#0f1816]">
-              <DoorOpen size={16} className="text-[#577c25]" /> Gym visit
+            <p className="inline-flex items-center gap-1.5 text-sm font-extrabold text-[#10264a]">
+              <DoorOpen size={16} className="text-[#2563eb]" /> Gym visit
             </p>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${openVisit ? "bg-[#e7f7c5] text-[#4f6d1e]" : "bg-[#f5f7f4] text-[#6c7773]"}`}>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${openVisit ? "bg-[#e7f7c5] text-[#4f6d1e]" : "bg-[#eaf3ff] text-[#2563eb]"}`}>
               {openVisit ? "Inside now" : "Ready"}
             </span>
           </div>
-          <p className="mt-1.5 text-sm font-medium text-[#6c7773]">
+          <p className="mt-1.5 text-sm font-medium text-[#6980a5]">
             {openVisit
               ? `Checked in at ${new Date(openVisit.checked_in_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
               : "Check in when you arrive at the gym"}
@@ -147,8 +147,8 @@ export default function MemberHomePage() {
           <button
             onClick={toggleVisit}
             disabled={visitPending}
-            className={`mt-4 w-full rounded-xl py-3 text-center text-sm font-extrabold disabled:opacity-60 ${
-              openVisit ? "border-2 border-[#111c19] text-[#111c19]" : "bg-[#c9f36a] text-[#0f1816]"
+            className={`mt-4 w-full rounded-xl py-3 text-center text-sm font-extrabold text-white shadow-lg disabled:opacity-60 ${
+              openVisit ? "bg-[#10264a] shadow-[#10264a]/15" : "bg-[#2563eb] shadow-[#2563eb]/15"
             }`}
           >
             {visitPending ? "Updating…" : openVisit ? "Check out now" : "Check in now"}
@@ -156,32 +156,35 @@ export default function MemberHomePage() {
           {visitMessage && <p className="mt-3 text-xs font-bold text-[#4f6d1e]">{visitMessage}</p>}
         </section>
 
-        <section className="mt-4 rounded-3xl border border-[#e5e9e5] bg-white p-5">
-          <p className="inline-flex items-center gap-1.5 text-sm font-extrabold text-[#0f1816]">
-            <Dumbbell size={16} className="text-[#577c25]" /> Today&apos;s workout
+        <section className="mt-4 rounded-3xl border border-[#dceaff] bg-white p-5 shadow-[0_12px_35px_rgba(37,99,235,.05)]">
+          <p className="inline-flex items-center gap-1.5 text-sm font-extrabold text-[#10264a]">
+            <Dumbbell size={16} className="text-[#2563eb]" /> Today&apos;s workout
           </p>
           {todaysWorkouts.length > 0 ? (
             <div className="mt-3 space-y-2">
               {todaysWorkouts.map((w) => (
-                <p key={w.id} className="rounded-xl bg-[#f5f7f4] px-3 py-2 text-sm font-bold text-[#0f1816]">
+                <p key={w.id} className="rounded-xl bg-[#f7fbff] px-3 py-2 text-sm font-bold text-[#10264a]">
                   {summarizeWorkout(w)}
                 </p>
               ))}
             </div>
           ) : (
-            <p className="mt-1.5 text-sm font-medium text-[#6c7773]">Log your cardio or strength training</p>
+            <p className="mt-1.5 text-sm font-medium text-[#6980a5]">Log your cardio or strength training</p>
           )}
-          <Link href="/member/workout" className="mt-4 block rounded-xl bg-[#c9f36a] py-3 text-center text-sm font-extrabold text-[#0f1816]">
+          <Link
+            href="/member/workout"
+            className="mt-4 block rounded-xl bg-[#2563eb] py-3 text-center text-sm font-extrabold text-white shadow-lg shadow-[#2563eb]/15"
+          >
             {todaysWorkouts.length > 0 ? "Log another workout" : "Log workout"}
           </Link>
         </section>
 
-        <section className="mt-4 rounded-3xl bg-[#111c19] p-5 text-white">
+        <section className="mt-4 rounded-3xl bg-[#10264a] p-5 text-white shadow-[0_16px_45px_rgba(16,38,74,.18)]">
           <div className="flex items-center justify-between">
             <p className="inline-flex items-center gap-1.5 text-sm font-extrabold">
-              <CalendarDays size={16} className="text-[#c9f36a]" /> Monthly attendance
+              <CalendarDays size={16} className="text-[#8eb5ff]" /> Monthly attendance
             </p>
-            <Link href="/member/calendar" className="text-xs font-extrabold text-[#c9f36a]">
+            <Link href="/member/calendar" className="text-xs font-extrabold text-[#8eb5ff]">
               View full calendar ›
             </Link>
           </div>
