@@ -92,12 +92,6 @@ export default function MemberProfilePage() {
                   {days >= 0 ? `${days} days remaining` : "Expired"}
                 </p>
               )}
-              <Link
-                href="/member/membership"
-                className="mt-4 block rounded-xl bg-[#2563eb] py-3 text-center text-sm font-extrabold text-white shadow-lg shadow-[#2563eb]/15"
-              >
-                View membership
-              </Link>
               <div className="mt-4 flex items-center justify-between border-t border-[#dceaff] pt-4 text-sm">
                 <div>
                   <p className="text-xs font-bold text-[#8aa0bf]">Start</p>
@@ -108,18 +102,22 @@ export default function MemberProfilePage() {
                   <p className="mt-0.5 font-bold text-[#10264a]">{formatIndiaDate(subscription.end_date)}</p>
                 </div>
               </div>
+              {subscription.notes && (
+                <div className="mt-4 border-t border-[#dceaff] pt-4">
+                  <p className="text-xs font-bold text-[#8aa0bf]">Notes</p>
+                  <p className="mt-1 text-sm font-medium text-[#10264a]">{subscription.notes}</p>
+                </div>
+              )}
             </>
           ) : (
             <>
               <p className="text-xs font-extrabold uppercase tracking-wide text-[#8aa0bf]">Membership</p>
               <p className="mt-2 text-base font-bold text-[#10264a]">No active membership plan recorded</p>
-              {member.plan && <p className="mt-1 text-sm font-medium text-[#6980a5]">Legacy plan on file: {member.plan}</p>}
-              <Link
-                href="/member/membership"
-                className="mt-4 block rounded-xl bg-[#2563eb] py-3 text-center text-sm font-extrabold text-white shadow-lg shadow-[#2563eb]/15"
-              >
-                View membership
-              </Link>
+              {member.plan ? (
+                <p className="mt-1 text-sm font-medium text-[#6980a5]">Legacy plan on file: {member.plan}. Contact reception for start/end dates.</p>
+              ) : (
+                <p className="mt-1 text-sm font-medium text-[#6980a5]">Contact reception to set up your membership.</p>
+              )}
             </>
           )}
         </section>

@@ -9,7 +9,7 @@ const TABS = [
     href: "/member/dashboard",
     label: "Home",
     icon: Home,
-    match: (p: string) => p === "/member/dashboard" || p.startsWith("/member/workout") || p.startsWith("/member/membership"),
+    match: (p: string) => p === "/member/dashboard" || p.startsWith("/member/workout"),
   },
   { href: "/member/calendar", label: "Calendar", icon: CalendarDays, match: (p: string) => p === "/member/calendar" },
   { href: "/member/profile", label: "Profile", icon: UserRound, match: (p: string) => p === "/member/profile" },
