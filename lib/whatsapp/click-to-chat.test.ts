@@ -23,6 +23,7 @@ describe("WhatsApp click-to-chat", () => {
 
   it("creates invoice and renewal messages from provided fields only", () => {
     expect(WhatsAppService.buildMessage("invoice", { memberName: "Asha", gymName: "Gym", invoiceNumber: "INV-1", amount: 1200, paymentDate: "2026-09-02" })).not.toContain("Membership Plan");
+    expect(WhatsAppService.buildMessage("invoice", { memberName: "Asha", gymName: "Gym", invoiceNumber: "INV-1", amount: 1200, paymentDate: "2026-09-02", paymentMethod: "UPI", invoicePdfUrl: "https://gym.example/receipt/token/pdf" })).toContain("Invoice PDF: https://gym.example/receipt/token/pdf");
     const renewal = WhatsAppService.buildMessage("renewal", { memberName: "Asha", gymName: "Gym", membershipExpiryDate: "2026-10-01", membershipPlan: "Gold", renewalAmount: 1200 });
     expect(renewal).toContain("₹1,200.00");
     expect(renewal).toContain("2026-10-01");

@@ -10,6 +10,7 @@ import { durationLabel } from "@/lib/plans/types";
 import { labelFor } from "@/lib/enquiries/types";
 import { PAYMENT_MODES, PAYMENT_STATUSES, type MemberPayment } from "@/lib/subscriptions/types";
 import { PrintButton } from "./print-button";
+import { getSiteUrl } from "@/lib/site";
 
 type MemberInfo = { id: string; member_id: string; full_name: string; mobile_number: string; whatsapp_number?: string | null };
 
@@ -49,7 +50,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const waLink = member
     ? WhatsAppService.buildWhatsAppUrl(
         member.whatsapp_number || member.mobile_number,
-        WhatsAppService.buildMessage("invoice", { memberName: member.full_name, gymName: settings.gym_name, invoiceNumber: record.invoice_number, amount: record.total_amount, paymentDate: record.issue_date, membershipPlan: record.plan_name, membershipExpiryDate: record.end_date })
+        WhatsAppService.buildMessage("invoice", { memberName: member.full_name, gymName: settings.gym_name, invoiceNumber: record.invoice_number, amount: record.amount_paid, paymentDate: record.issue_date, membershipPlan: record.plan_name, membershipExpiryDate: record.end_date, paymentMethod: record.payment_mode?.replace(/_/g, " ") ?? null, invoicePdfUrl: record.share_token ? `${getSiteUrl()}/receipt/${record.share_token}/pdf` : null })
       )
     : null;
   const contactLines = [settings.address, [settings.phone, settings.email].filter(Boolean).join("  ·  ") || null, settings.website, settings.gstin ? `GSTIN: ${settings.gstin}` : null].filter(Boolean) as string[];

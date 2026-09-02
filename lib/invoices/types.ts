@@ -4,6 +4,7 @@ import type { PaymentMode, PaymentStatus } from "@/lib/subscriptions/types";
 export type Invoice = {
   id: string;
   invoice_number: string;
+  share_token?: string | null;
   member_id: string;
   subscription_id: string | null;
   issue_date: string;

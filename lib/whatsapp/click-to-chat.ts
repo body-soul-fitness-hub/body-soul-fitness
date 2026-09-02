@@ -8,6 +8,8 @@ type InvoiceTemplateData = {
   paymentDate: string;
   membershipPlan?: string | null;
   membershipExpiryDate?: string | null;
+  paymentMethod?: string | null;
+  invoicePdfUrl?: string | null;
 };
 
 type RenewalTemplateData = {
@@ -39,6 +41,8 @@ export const whatsappTemplates = {
     ];
     if (data.membershipPlan) lines.push(`Membership Plan: ${data.membershipPlan}`);
     if (data.membershipExpiryDate) lines.push(`Valid Until: ${data.membershipExpiryDate}`);
+    if (data.paymentMethod) lines.push(`Payment Method: ${data.paymentMethod}`);
+    if (data.invoicePdfUrl) lines.push(`Invoice PDF: ${data.invoicePdfUrl}`);
     return `${lines.join("\n")}\n\nThank you,\n${data.gymName}`;
   },
   renewal: (data: RenewalTemplateData) => {
