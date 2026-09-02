@@ -1,6 +1,5 @@
 import { round2, type DurationUnit } from "@/lib/plans/types";
 import type { PaymentMode, PaymentStatus } from "@/lib/subscriptions/types";
-import { normalizeToE164 } from "@/lib/whatsapp/phone";
 
 export type Invoice = {
   id: string;
@@ -37,18 +36,4 @@ export function computeInvoiceAmounts(amount: number, discountAmount: number, ta
   const taxAmount = taxRatePercent > 0 ? round2((taxableAmount * taxRatePercent) / 100) : 0;
   const totalAmount = round2(taxableAmount + taxAmount);
   return { taxableAmount, taxAmount, totalAmount };
-}
-
-// Deep-links to WhatsApp with a prefilled draft message — staff still have to hit send
-// themselves, so this is not automated delivery, just a shortcut into their own WhatsApp.
-export function buildInvoiceWhatsAppLink(
-  member: { full_name: string; mobile_number: string },
-  invoice: Pick<Invoice, "invoice_number" | "total_amount" | "amount_paid" | "balance_due">
-): string {
-  const withCountryCode = normalizeToE164(member.mobile_number) ?? member.mobile_number.replace(/\D/g, "");
-  const message =
-    `Hi ${member.full_name}, here is your invoice ${invoice.invoice_number} from Body & Soul Fitness Center. ` +
-    `Total: ₹${invoice.total_amount.toFixed(2)}, Paid: ₹${invoice.amount_paid.toFixed(2)}, ` +
-    `Balance due: ₹${invoice.balance_due.toFixed(2)}. Thank you!`;
-  return `https://wa.me/${withCountryCode}?text=${encodeURIComponent(message)}`;
 }

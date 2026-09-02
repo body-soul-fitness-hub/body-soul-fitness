@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Download, MessageCircle, Pencil, Plus, UserCircle } from "lucide-react";
+import { ArrowLeft, Download, Pencil, Plus, UserCircle } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { getMemberPhotoUrl } from "@/lib/members/photo";
 import { MEMBER_STATUSES, type Member, type MemberCheckin, type MemberNote, type MemberStatusChange } from "@/lib/members/types";
 import { GENDERS, WORKOUT_TIMES, calculateAge, labelFor } from "@/lib/enquiries/types";
 import { deriveSubscriptionStatus, PAYMENT_MODES, PAYMENT_STATUSES, SUBSCRIPTION_DISPLAY_STATUSES, type MemberPayment, type MemberSubscription } from "@/lib/subscriptions/types";
-import { buildInvoiceWhatsAppLink, type Invoice } from "@/lib/invoices/types";
+import { type Invoice } from "@/lib/invoices/types";
+import { DEFAULT_GYM_SETTINGS, GYM_SETTINGS_ID, type GymSettings } from "@/lib/settings/types";
+import { WhatsAppService } from "@/lib/whatsapp/click-to-chat";
+import { WhatsAppButton } from "@/components/whatsapp-button";
 import { DELIVERY_STATUSES, NOTIFICATION_TYPES, type MemberNotificationLog } from "@/lib/whatsapp/types";
 import { NoteForm, StatusChangeForm } from "./detail-forms";
 import { MemberQrCard } from "./member-qr-card";
@@ -61,6 +64,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     { data: notifications },
     { data: notes },
     { data: statusChanges },
+    { data: settingsRow },
   ] = await Promise.all([
     supabaseAdmin.from("members").select("*").eq("id", id).maybeSingle(),
     supabaseAdmin.from("member_subscriptions").select("*").eq("member_id", id).order("start_date", { ascending: false }),
@@ -70,6 +74,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
     supabaseAdmin.from("member_notifications").select("*").eq("member_id", id).order("sent_at", { ascending: false }).limit(50),
     supabaseAdmin.from("member_notes").select("*").eq("member_id", id).order("created_at", { ascending: false }),
     supabaseAdmin.from("member_status_changes").select("*").eq("member_id", id).order("created_at", { ascending: false }),
+    supabaseAdmin.from("gym_settings").select("*").eq("id", GYM_SETTINGS_ID).maybeSingle(),
   ]);
 
   if (error || !member) {
@@ -77,6 +82,17 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
   }
 
   const record = member as Member;
+  const settings: GymSettings = { id: GYM_SETTINGS_ID, updated_at: new Date().toISOString(), ...DEFAULT_GYM_SETTINGS, ...(settingsRow ?? {}) };
+  const latestSubscription = (subscriptions ?? [])[0] as MemberSubscription | undefined;
+  const whatsappPhone = record.whatsapp_number || record.mobile_number;
+  const generalWhatsAppLink = WhatsAppService.buildWhatsAppUrl(whatsappPhone, WhatsAppService.buildMessage("general", { memberName: record.full_name, gymName: settings.gym_name }));
+  const renewalWhatsAppLink = WhatsAppService.buildWhatsAppUrl(whatsappPhone, WhatsAppService.buildMessage("renewal", {
+    memberName: record.full_name,
+    gymName: settings.gym_name,
+    membershipExpiryDate: latestSubscription?.end_date,
+    membershipPlan: latestSubscription?.plan_name,
+    renewalAmount: latestSubscription?.final_amount,
+  }));
   const age = calculateAge(record.date_of_birth);
   const photoUrl = await getMemberPhotoUrl(record.photo_path);
 
@@ -104,9 +120,13 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
           </div>
         </div>
 
-        <Link className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#111c19] px-5 py-3 text-sm font-extrabold text-white shadow-xl shadow-[#111c19]/15" href={`/members/${record.id}/edit`}>
-          <Pencil size={16} /> Edit member
-        </Link>
+        <div className="flex flex-wrap items-start justify-end gap-2">
+          <WhatsAppButton href={generalWhatsAppLink} label="WhatsApp" />
+          <WhatsAppButton href={renewalWhatsAppLink} label="Send Renewal Reminder" />
+          <Link className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#111c19] px-5 py-3 text-sm font-extrabold text-white shadow-xl shadow-[#111c19]/15" href={`/members/${record.id}/edit`}>
+            <Pencil size={16} /> Edit member
+          </Link>
+        </div>
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.3fr_1fr]">
@@ -156,7 +176,7 @@ export default async function MemberDetailPage({ params }: { params: Promise<{ i
           <section className="rounded-3xl border border-[#e5e9e5] bg-white p-6">
             <p className="text-sm font-extrabold">Invoices</p>
             <p className="mt-1 text-xs font-medium text-[#89938f]">Every bill generated for this member's subscriptions.</p>
-            <InvoicesTable invoices={(invoices ?? []) as Invoice[]} member={record} />
+            <InvoicesTable invoices={(invoices ?? []) as Invoice[]} />
           </section>
 
           <section className="rounded-3xl border border-[#e5e9e5] bg-white p-6">
@@ -294,7 +314,7 @@ function paymentStatusTone(status: string): string {
   }
 }
 
-function InvoicesTable({ invoices, member }: { invoices: Invoice[]; member: Member }) {
+function InvoicesTable({ invoices }: { invoices: Invoice[] }) {
   return (
     <div className="mt-4 overflow-x-auto">
       <table className="w-full min-w-[720px] text-left text-sm">
@@ -330,15 +350,6 @@ function InvoicesTable({ invoices, member }: { invoices: Invoice[]; member: Memb
                     <Link className="text-xs font-extrabold text-[#577c25]" href={`/invoices/${invoice.id}`}>View</Link>
                     <a className="inline-flex items-center gap-1 text-xs font-extrabold text-[#577c25]" href={`/invoices/${invoice.id}/pdf`} title="Download PDF">
                       <Download size={13} />
-                    </a>
-                    <a
-                      className="inline-flex items-center gap-1 text-xs font-extrabold text-[#25d366]"
-                      href={buildInvoiceWhatsAppLink(member, invoice)}
-                      rel="noreferrer"
-                      target="_blank"
-                      title="Send via WhatsApp"
-                    >
-                      <MessageCircle size={13} />
                     </a>
                   </div>
                 </td>

@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Download, MessageCircle } from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { DEFAULT_GYM_SETTINGS, GYM_SETTINGS_ID, type GymSettings } from "@/lib/settings/types";
-import { buildInvoiceWhatsAppLink, type Invoice } from "@/lib/invoices/types";
+import { type Invoice } from "@/lib/invoices/types";
+import { WhatsAppService } from "@/lib/whatsapp/click-to-chat";
+import { WhatsAppButton } from "@/components/whatsapp-button";
 import { durationLabel } from "@/lib/plans/types";
 import { labelFor } from "@/lib/enquiries/types";
 import { PAYMENT_MODES, PAYMENT_STATUSES, type MemberPayment } from "@/lib/subscriptions/types";
 import { PrintButton } from "./print-button";
 
-type MemberInfo = { id: string; member_id: string; full_name: string; mobile_number: string };
+type MemberInfo = { id: string; member_id: string; full_name: string; mobile_number: string; whatsapp_number?: string | null };
 
 function formatAmount(amount: number): string {
   return `₹${amount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -30,7 +32,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const { id } = await params;
 
   const [{ data: invoiceRow, error }, { data: settingsRow }, { data: payments }] = await Promise.all([
-    supabaseAdmin.from("invoices").select("*, members(id, member_id, full_name, mobile_number)").eq("id", id).maybeSingle(),
+    supabaseAdmin.from("invoices").select("*, members(id, member_id, full_name, mobile_number, whatsapp_number)").eq("id", id).maybeSingle(),
     supabaseAdmin.from("gym_settings").select("*").eq("id", GYM_SETTINGS_ID).maybeSingle(),
     supabaseAdmin.from("member_payments").select("*").eq("invoice_id", id).order("payment_date", { ascending: true }),
   ]);
@@ -44,7 +46,12 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const settings: GymSettings = { id: GYM_SETTINGS_ID, updated_at: new Date().toISOString(), ...DEFAULT_GYM_SETTINGS, ...(settingsRow ?? {}) };
   const paymentRows = (payments ?? []) as MemberPayment[];
   const authorizedStaff = record.created_by ?? paymentRows[paymentRows.length - 1]?.received_by ?? null;
-  const waLink = member ? buildInvoiceWhatsAppLink(member, record) : null;
+  const waLink = member
+    ? WhatsAppService.buildWhatsAppUrl(
+        member.whatsapp_number || member.mobile_number,
+        WhatsAppService.buildMessage("invoice", { memberName: member.full_name, gymName: settings.gym_name, invoiceNumber: record.invoice_number, amount: record.total_amount, paymentDate: record.issue_date, membershipPlan: record.plan_name, membershipExpiryDate: record.end_date })
+      )
+    : null;
   const contactLines = [settings.address, [settings.phone, settings.email].filter(Boolean).join("  ·  ") || null, settings.website, settings.gstin ? `GSTIN: ${settings.gstin}` : null].filter(Boolean) as string[];
 
   return (
@@ -64,11 +71,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           <a className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#e5e9e5] bg-white px-4 py-3 text-sm font-extrabold text-[#0f1816]" href={`/invoices/${record.id}/pdf`}>
             <Download size={16} /> Download PDF
           </a>
-          {waLink && (
-            <a className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25d366] px-4 py-3 text-sm font-extrabold text-white" href={waLink} rel="noreferrer" target="_blank">
-              <MessageCircle size={16} /> Send via WhatsApp
-            </a>
-          )}
+          <WhatsAppButton href={waLink} label="Send Invoice on WhatsApp" />
         </div>
       </div>
 
