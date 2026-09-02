@@ -92,6 +92,10 @@ export function WhatsAppSettingsForm({ settings, templates }: { settings: WhatsA
             <span className="text-sm font-bold">Expired subscription notice</span>
           </label>
           <label className={checkboxRowClass}>
+            <input defaultChecked={settings.birthday_messages_enabled} className="size-4" name="birthday_messages_enabled" type="checkbox" />
+            <span className="text-sm font-bold">Birthday greeting</span>
+          </label>
+          <label className={checkboxRowClass}>
             <input defaultChecked={settings.custom_notifications_enabled} className="size-4" name="custom_notifications_enabled" type="checkbox" />
             <span className="text-sm font-bold">Custom notifications</span>
           </label>

@@ -4,6 +4,7 @@ export const NOTIFICATION_TYPES = [
   { value: "expiry_reminder_3", label: "Expiry reminder — 3 days", variables: ["member_name", "plan_name", "end_date", "gym_name"] },
   { value: "expiry_reminder_1", label: "Expiry reminder — 1 day", variables: ["member_name", "plan_name", "end_date", "gym_name"] },
   { value: "expired", label: "Subscription expired", variables: ["member_name", "plan_name", "end_date", "gym_name"] },
+  { value: "birthday", label: "Birthday greeting", variables: ["member_name", "gym_name"] },
   { value: "custom", label: "Custom notification", variables: ["message"] },
 ] as const;
 
@@ -50,6 +51,7 @@ export type WhatsAppSettings = {
   bill_generated_enabled: boolean;
   expiry_reminders_enabled: boolean;
   expired_notice_enabled: boolean;
+  birthday_messages_enabled: boolean;
   custom_notifications_enabled: boolean;
   updated_at: string;
 };
@@ -69,6 +71,7 @@ export const DEFAULT_WHATSAPP_SETTINGS: Omit<WhatsAppSettings, "id" | "updated_a
   bill_generated_enabled: true,
   expiry_reminders_enabled: true,
   expired_notice_enabled: true,
+  birthday_messages_enabled: true,
   custom_notifications_enabled: true,
 };
 
@@ -116,6 +119,8 @@ export function isAutomationEnabled(settings: WhatsAppSettings, type: Notificati
       return settings.expiry_reminders_enabled;
     case "expired":
       return settings.expired_notice_enabled;
+    case "birthday":
+      return settings.birthday_messages_enabled;
     case "custom":
       return settings.custom_notifications_enabled;
   }

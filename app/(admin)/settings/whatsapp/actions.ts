@@ -43,6 +43,7 @@ export async function updateWhatsAppSettings(_prevState: FormState, formData: Fo
     bill_generated_enabled: bool(formData, "bill_generated_enabled"),
     expiry_reminders_enabled: bool(formData, "expiry_reminders_enabled"),
     expired_notice_enabled: bool(formData, "expired_notice_enabled"),
+    birthday_messages_enabled: bool(formData, "birthday_messages_enabled"),
     custom_notifications_enabled: bool(formData, "custom_notifications_enabled"),
     updated_at: new Date().toISOString(),
   };

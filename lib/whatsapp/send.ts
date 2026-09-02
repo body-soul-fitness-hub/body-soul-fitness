@@ -2,7 +2,7 @@ import "server-only";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { sendMetaTemplateMessage } from "@/lib/whatsapp/client";
 import { buildTemplateParams, renderTemplate } from "@/lib/whatsapp/render";
-import { normalizeToE164 } from "@/lib/whatsapp/phone";
+import { normalizeWhatsAppPhone } from "@/lib/whatsapp/phone";
 import {
   DEFAULT_WHATSAPP_SETTINGS,
   ESSENTIAL_NOTIFICATION_TYPES,
@@ -110,15 +110,18 @@ export async function sendNotification(args: SendNotificationArgs): Promise<Send
   if (!template) return fail("No WhatsApp template is registered for this notification type.");
   if (!template.enabled) return fail("This notification type's template is disabled.", template.key);
   if (!template.meta_template_name) return fail("No Meta-approved WhatsApp template is linked for this notification type yet.", template.key);
+  if (template.meta_approval_status !== "approved") {
+    return fail("The linked Meta WhatsApp template has not been confirmed as approved. Check its status in WhatsApp settings before sending.", template.key);
+  }
 
   const messageText = renderTemplate(template.body_preview, args.variables);
 
-  const realPhone = normalizeToE164(member.whatsapp_number || member.mobile_number || "");
+  const realPhone = normalizeWhatsAppPhone(member.whatsapp_number || member.mobile_number);
   if (!realPhone) return fail("Member has no WhatsApp or mobile number on file.", template.key);
 
   let recipientNumber = realPhone;
   if (settings.test_mode) {
-    const testNumber = normalizeToE164(settings.test_recipient_number ?? "");
+    const testNumber = normalizeWhatsAppPhone(settings.test_recipient_number);
     if (!testNumber) return fail("Test mode is enabled but no test recipient number is configured.", template.key);
     recipientNumber = testNumber;
   }
