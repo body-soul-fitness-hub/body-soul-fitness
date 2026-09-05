@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Download, Search } from "lucide-react";
 import { buildPaymentsQuery, parsePage, parsePaymentFilters, PAGE_SIZE, type PaymentFilters } from "@/lib/payments/filters";
 import { labelFor } from "@/lib/enquiries/types";
 import { PAYMENT_MODES, PAYMENT_STATUSES, type MemberPayment } from "@/lib/subscriptions/types";
+import MemberSearchInput from "../components/member-search-input";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -67,7 +68,7 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
       <form className="mt-6 flex flex-wrap items-center gap-3 rounded-3xl border border-[#e5e9e5] bg-white p-4" method="get">
         <div className="flex min-w-[220px] flex-1 items-center gap-2 rounded-xl border border-[#e5e9e5] bg-[#f9faf8] px-3.5 py-2.5">
           <Search size={16} className="text-[#6c7773]" />
-          <input className="w-full bg-transparent text-sm font-medium outline-none" defaultValue={filters.q ?? ""} name="q" placeholder="Search member ID, name, or mobile" type="text" />
+          <MemberSearchInput className="w-full bg-transparent text-sm font-medium outline-none" defaultValue={filters.q ?? ""} placeholder="Search member ID, name, or mobile" />
         </div>
 
         <select className={filterClass} defaultValue={filters.method ?? ""} name="method">
