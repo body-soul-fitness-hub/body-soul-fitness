@@ -44,11 +44,15 @@ async function resolveTargetMemberIds(formData: FormData): Promise<string[]> {
 export async function sendCustomNotification(_prevState: FormState, formData: FormData): Promise<FormState> {
   const message = str(formData, "message");
   const performedBy = str(formData, "performed_by");
+  const recipientMode = str(formData, "recipient_mode");
 
   if (!message) return { error: "Write a message before sending." };
 
   const memberIds = await resolveTargetMemberIds(formData);
   if (memberIds.length === 0) return { error: "Select at least one recipient." };
+  if (recipientMode === "group" && !str(formData, "status") && !str(formData, "planStatus") && !str(formData, "trainer") && !str(formData, "from") && !str(formData, "to") && formData.get("confirm_all_members") !== "on") {
+    return { error: "Confirm that you intend to send this campaign to all eligible members." };
+  }
 
   const { data: settingsRow } = await supabaseAdmin.from("gym_settings").select("gym_name").eq("id", GYM_SETTINGS_ID).maybeSingle();
   const gymName = settingsRow?.gym_name ?? DEFAULT_GYM_SETTINGS.gym_name;

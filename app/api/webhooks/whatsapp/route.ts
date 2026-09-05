@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase/server";
+import { verifyMetaWebhookSignature } from "@/lib/whatsapp/webhook";
 
 export const runtime = "nodejs";
 
@@ -26,8 +27,15 @@ type StatusUpdate = {
 // Meta doesn't retry-storm or eventually disable the webhook subscription — this is a best-effort
 // enrichment of the log, not a critical path.
 export async function POST(request: Request) {
+  const rawBody = await request.text();
+  if (!verifyMetaWebhookSignature(rawBody, request.headers.get("x-hub-signature-256"), process.env.WHATSAPP_APP_SECRET)) {
+    // Do not parse or log an untrusted body. A 401 tells Meta this endpoint is not ready
+    // rather than accepting a forged delivery-status update.
+    return new Response("Unauthorized", { status: 401 });
+  }
+
   try {
-    const payload = (await request.json()) as {
+    const payload = JSON.parse(rawBody) as {
       entry?: Array<{ changes?: Array<{ value?: { statuses?: StatusUpdate[] } }> }>;
     };
 

@@ -81,12 +81,44 @@ export async function GET(request: Request) {
     }
   }
 
+  async function processBirthdays() {
+    const monthDay = today.slice(5);
+    const { data: members } = await supabaseAdmin
+      .from("members")
+      .select("id, full_name, date_of_birth")
+      .not("date_of_birth", "is", null)
+      .like("date_of_birth", `%-${monthDay}`);
+    const yearStart = `${today.slice(0, 4)}-01-01T00:00:00.000Z`;
+
+    for (const member of members ?? []) {
+      const { data: previous } = await supabaseAdmin
+        .from("member_notifications")
+        .select("id")
+        .eq("member_id", member.id)
+        .eq("notification_type", "birthday")
+        .gte("sent_at", yearStart)
+        .in("status", ["sent", "delivered"])
+        .limit(1);
+      if ((previous ?? []).length > 0) continue;
+
+      const result = await sendNotification({
+        memberId: member.id,
+        notificationType: "birthday",
+        triggerSource: "automation",
+        performedBy: "Automation: Birthday greeting",
+        variables: { member_name: member.full_name ?? "", gym_name: gymName },
+      });
+      results.push({ type: "birthday", memberId: member.id, ok: result.ok, errorMessage: result.errorMessage });
+    }
+  }
+
   const configuredDays = (settingsRow?.expiry_reminder_days ?? [7, 3, 1]) as number[];
   const windows = configuredDays.map((days: number) => ({ daysBeforeEnd: days, type: reminderType(days) })).filter((window: { daysBeforeEnd: number; type: NotificationType | null }): window is { daysBeforeEnd: number; type: NotificationType } => Boolean(window.type));
   for (const window of windows) {
     await processWindow(window.type, addDays(today, window.daysBeforeEnd), `Automation: Expiry reminder (${window.daysBeforeEnd} day${window.daysBeforeEnd === 1 ? "" : "s"})`);
   }
   await processWindow("expired", addDays(today, -1), "Automation: Subscription expired");
+  await processBirthdays();
 
   return Response.json({ ok: true, date: today, processed: results.length, results });
 }

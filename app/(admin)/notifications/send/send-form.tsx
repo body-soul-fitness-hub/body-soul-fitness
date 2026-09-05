@@ -130,7 +130,13 @@ export function SendCustomNotificationForm() {
                 <input className={`${inputClass} mt-1.5`} name="to" type="date" />
               </label>
             </div>
-            <p className="text-xs font-medium text-[#89938f] sm:col-span-2">Leave every field blank to target all members — use with care.</p>
+            <div className="sm:col-span-2">
+              <p className="text-xs font-medium text-[#89938f]">Leave every field blank to target all members — use with care. Members without WhatsApp consent and members opted out of promotions are automatically excluded.</p>
+              <label className="mt-3 flex items-start gap-2 text-xs font-bold text-[#3a4542]">
+                <input className="mt-0.5 size-4" name="confirm_all_members" type="checkbox" />
+                I confirm that this campaign should go to every eligible member when no filters are selected.
+              </label>
+            </div>
           </div>
         )}
       </section>
