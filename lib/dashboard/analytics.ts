@@ -7,6 +7,8 @@ export type DashboardAnalytics = {
   today: string;
   weekStart: string;
   todayCollection: number;
+  monthCollection: number;
+  previousMonthCollection: number;
   newMembersThisWeek: number;
   todayCheckins: number;
   membersInside: number;
@@ -40,13 +42,19 @@ export async function dashboardAnalytics(): Promise<DashboardAnalytics> {
   const today = dayInIndia();
   const weekStart = dayInIndia(-6);
   const weekEnd = dayInIndia(7);
-  const [todayCheckinsResult, recentCheckinsResult, subscriptionsResult, membersResult, invoicesResult, paymentsResult] = await Promise.all([
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const previousMonthStart = new Date(`${monthStart}T12:00:00Z`);
+  previousMonthStart.setUTCMonth(previousMonthStart.getUTCMonth() - 1);
+  const previousMonth = previousMonthStart.toISOString().slice(0, 10);
+  const [todayCheckinsResult, recentCheckinsResult, subscriptionsResult, membersResult, invoicesResult, paymentsResult, monthPaymentsResult, previousMonthPaymentsResult] = await Promise.all([
     supabaseAdmin.from("member_checkins").select("checked_in_at,checked_out_at,duration_minutes").gte("checked_in_at", indiaDayStartIso()).limit(5000),
     supabaseAdmin.from("member_checkins").select("member_id,checked_in_at").gte("checked_in_at", fourteenDaysAgo).limit(10000),
     supabaseAdmin.from("member_subscriptions").select("member_id,end_date,balance_due,created_at").eq("status", "active").or(`end_date.gte.${today},end_date.is.null`).order("created_at", { ascending: false }).limit(10000),
     supabaseAdmin.from("members").select("id,full_name,member_id,date_of_birth,join_date").eq("status", "active").limit(10000),
     supabaseAdmin.from("invoices").select("member_id,balance_due,members(id,full_name,member_id)").in("status", ["unpaid", "partial"]).order("balance_due", { ascending: false }).limit(10000),
     supabaseAdmin.from("member_payments").select("amount").eq("payment_date", today).limit(10000),
+    supabaseAdmin.from("member_payments").select("amount").gte("payment_date", monthStart).lte("payment_date", today).limit(10000),
+    supabaseAdmin.from("member_payments").select("amount").gte("payment_date", previousMonth).lt("payment_date", monthStart).limit(10000),
   ]);
 
   const todayCheckins = todayCheckinsResult.data ?? [];
@@ -75,6 +83,8 @@ export async function dashboardAnalytics(): Promise<DashboardAnalytics> {
   const expiringThisWeek = [...currentSubscriptions.values()].filter((subscription) => subscription.end_date && subscription.end_date <= weekEnd).length;
   const outstandingBalance = (invoicesResult.data ?? []).reduce((sum, invoice) => sum + Number(invoice.balance_due ?? 0), 0);
   const todayCollection = (paymentsResult.data ?? []).reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0);
+  const monthCollection = (monthPaymentsResult.data ?? []).reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0);
+  const previousMonthCollection = (previousMonthPaymentsResult.data ?? []).reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0);
   const newMembersThisWeek = (membersResult.data ?? []).filter((member) => member.join_date && member.join_date >= weekStart).length;
   const birthdays = (membersResult.data ?? []).filter((member) => member.date_of_birth?.slice(5) === today.slice(5)).map((member) => ({ id: member.id, name: member.full_name, memberCode: member.member_id })).slice(0, 6);
   const dueMembers = (invoicesResult.data ?? []).map((invoice: any) => ({
@@ -105,7 +115,7 @@ export async function dashboardAnalytics(): Promise<DashboardAnalytics> {
   ].slice(0, 3);
 
   return {
-    generatedAt: now.toISOString(), today, weekStart, todayCollection, newMembersThisWeek, birthdays, dueMembers, todayCheckins: todayCheckins.length,
+    generatedAt: now.toISOString(), today, weekStart, todayCollection, monthCollection, previousMonthCollection, newMembersThisWeek, birthdays, dueMembers, todayCheckins: todayCheckins.length,
     membersInside: todayCheckins.filter((checkin) => !checkin.checked_out_at).length, outstandingBalance,
     weeklyCheckins: weekDays.map((day) => weeklyCountByDay.get(day) ?? 0),
     weeklyLabels: weekDays.map((day) => new Intl.DateTimeFormat("en-IN", { weekday: "short", timeZone: "Asia/Kolkata" }).format(new Date(`${day}T12:00:00+05:30`))),
