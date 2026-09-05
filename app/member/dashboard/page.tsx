@@ -21,6 +21,7 @@ export default function MemberHomePage() {
   const [openVisit, setOpenVisit] = useState<OpenVisit | null>(null);
   const [checkinsToday, setCheckinsToday] = useState(0);
   const [visitMessage, setVisitMessage] = useState("");
+  const [visitError, setVisitError] = useState(false);
   const [visitPending, setVisitPending] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -54,14 +55,37 @@ export default function MemberHomePage() {
   async function toggleVisit() {
     setVisitPending(true);
     setVisitMessage("");
-    const { data, error } = await supabase.rpc("member_portal_toggle_visit");
-    setVisitPending(false);
-    if (error) {
-      setVisitMessage(error.message);
+    setVisitError(false);
+    if (!navigator.geolocation) {
+      setVisitPending(false);
+      setVisitError(true);
+      setVisitMessage("This device cannot provide location. Use a phone with location services enabled.");
       return;
     }
-    setVisitMessage(`Successfully ${data?.[0]?.action ?? "updated"}.`);
-    void load();
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { data, error } = await supabase.rpc("member_portal_toggle_visit", {
+          p_latitude: position.coords.latitude,
+          p_longitude: position.coords.longitude,
+          p_accuracy_meters: position.coords.accuracy,
+        });
+        setVisitPending(false);
+        if (error) {
+          setVisitError(true);
+          setVisitMessage(error.message);
+          return;
+        }
+        const distance = data?.[0]?.distance_meters;
+        setVisitMessage(`Successfully ${data?.[0]?.action ?? "updated"}.${typeof distance === "number" ? ` Verified ${Math.round(distance)} m from the gym.` : ""}`);
+        void load();
+      },
+      (error) => {
+        setVisitPending(false);
+        setVisitError(true);
+        setVisitMessage(error.code === error.PERMISSION_DENIED ? "Location permission is required to check in or check out." : error.code === error.TIMEOUT ? "Location request timed out. Move to an open area and try again." : "Location could not be determined. Turn on phone location services and try again.");
+      },
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
+    );
   }
 
   if (!ready || loading || !member) {
@@ -111,7 +135,8 @@ export default function MemberHomePage() {
           >
             {visitPending ? "Updating…" : openVisit ? "Check out now" : limitReached ? "Limit reached" : "Check in now"}
           </button>
-          {visitMessage && <p className="mt-3 text-xs font-bold text-[#4f6d1e]">{visitMessage}</p>}
+          <p className="mt-3 text-xs font-medium text-[#6980a5]">Self check-in and check-out require your current location within 30 m of the gym.</p>
+          {visitMessage && <p className={`mt-3 text-xs font-bold ${visitError ? "text-[#a94f37]" : "text-[#4f6d1e]"}`}>{visitMessage}</p>}
         </section>
 
         <section className="mt-4 rounded-3xl border border-[#dceaff] bg-white p-5 shadow-[0_12px_35px_rgba(37,99,235,.05)]">
