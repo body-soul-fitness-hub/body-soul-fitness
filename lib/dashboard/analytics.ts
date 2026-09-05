@@ -4,12 +4,18 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 
 export type DashboardAnalytics = {
   generatedAt: string;
+  today: string;
+  weekStart: string;
+  todayCollection: number;
+  newMembersThisWeek: number;
   todayCheckins: number;
   membersInside: number;
   averageVisitMinutes: number | null;
   weeklyCheckins: number[];
   weeklyLabels: string[];
   outstandingBalance: number;
+  dueMembers: Array<{ id: string; name: string; memberCode: string; balance: number }>;
+  birthdays: Array<{ id: string; name: string; memberCode: string }>;
   expiringThisWeek: number;
   risk: { high: number; medium: number; low: number };
   insights: Array<{ title: string; text: string }>;
@@ -32,13 +38,15 @@ export async function dashboardAnalytics(): Promise<DashboardAnalytics> {
   const fourteenDaysAgo = new Date(now.getTime() - 14 * 86_400_000).toISOString();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 86_400_000).toISOString();
   const today = dayInIndia();
+  const weekStart = dayInIndia(-6);
   const weekEnd = dayInIndia(7);
-  const [todayCheckinsResult, recentCheckinsResult, subscriptionsResult, membersResult, invoicesResult] = await Promise.all([
+  const [todayCheckinsResult, recentCheckinsResult, subscriptionsResult, membersResult, invoicesResult, paymentsResult] = await Promise.all([
     supabaseAdmin.from("member_checkins").select("checked_in_at,checked_out_at,duration_minutes").gte("checked_in_at", indiaDayStartIso()).limit(5000),
     supabaseAdmin.from("member_checkins").select("member_id,checked_in_at").gte("checked_in_at", fourteenDaysAgo).limit(10000),
     supabaseAdmin.from("member_subscriptions").select("member_id,end_date,balance_due,created_at").eq("status", "active").or(`end_date.gte.${today},end_date.is.null`).order("created_at", { ascending: false }).limit(10000),
-    supabaseAdmin.from("members").select("id").eq("status", "active").limit(10000),
-    supabaseAdmin.from("invoices").select("balance_due").in("status", ["unpaid", "partial"]).limit(10000),
+    supabaseAdmin.from("members").select("id,full_name,member_id,date_of_birth,join_date").eq("status", "active").limit(10000),
+    supabaseAdmin.from("invoices").select("member_id,balance_due,members(id,full_name,member_id)").in("status", ["unpaid", "partial"]).order("balance_due", { ascending: false }).limit(10000),
+    supabaseAdmin.from("member_payments").select("amount").eq("payment_date", today).limit(10000),
   ]);
 
   const todayCheckins = todayCheckinsResult.data ?? [];
@@ -66,6 +74,15 @@ export async function dashboardAnalytics(): Promise<DashboardAnalytics> {
   const low = Math.max(0, activeMembers - high - medium);
   const expiringThisWeek = [...currentSubscriptions.values()].filter((subscription) => subscription.end_date && subscription.end_date <= weekEnd).length;
   const outstandingBalance = (invoicesResult.data ?? []).reduce((sum, invoice) => sum + Number(invoice.balance_due ?? 0), 0);
+  const todayCollection = (paymentsResult.data ?? []).reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0);
+  const newMembersThisWeek = (membersResult.data ?? []).filter((member) => member.join_date && member.join_date >= weekStart).length;
+  const birthdays = (membersResult.data ?? []).filter((member) => member.date_of_birth?.slice(5) === today.slice(5)).map((member) => ({ id: member.id, name: member.full_name, memberCode: member.member_id })).slice(0, 6);
+  const dueMembers = (invoicesResult.data ?? []).map((invoice: any) => ({
+    id: invoice.members?.id ?? invoice.member_id,
+    name: invoice.members?.full_name ?? "Member",
+    memberCode: invoice.members?.member_id ?? "—",
+    balance: Number(invoice.balance_due ?? 0),
+  })).filter((member) => member.id).slice(0, 4);
   const weekDays = Array.from({ length: 7 }, (_, index) => dayInIndia(index - 6));
   const weeklyCountByDay = new Map(weekDays.map((day) => [day, 0]));
   for (const checkin of recentCheckinsResult.data ?? []) {
@@ -88,7 +105,7 @@ export async function dashboardAnalytics(): Promise<DashboardAnalytics> {
   ].slice(0, 3);
 
   return {
-    generatedAt: now.toISOString(), todayCheckins: todayCheckins.length,
+    generatedAt: now.toISOString(), today, weekStart, todayCollection, newMembersThisWeek, birthdays, dueMembers, todayCheckins: todayCheckins.length,
     membersInside: todayCheckins.filter((checkin) => !checkin.checked_out_at).length, outstandingBalance,
     weeklyCheckins: weekDays.map((day) => weeklyCountByDay.get(day) ?? 0),
     weeklyLabels: weekDays.map((day) => new Intl.DateTimeFormat("en-IN", { weekday: "short", timeZone: "Asia/Kolkata" }).format(new Date(`${day}T12:00:00+05:30`))),
