@@ -20,8 +20,7 @@ export async function reportRows(type: ReportType, filters: DateFilters) {
     }
     case "conversion": {
       const { data, error } = await applyDate(supabaseAdmin.from("enquiries").select("enquiry_date,status,source"), "enquiry_date", filters);
-      const rows = data ?? []; const total = rows.length; const converted = rows.filter((r) => r.status === "converted").length;
-      return { rows: [{ enquiries: total, converted, conversion_rate: total ? `${((converted / total) * 100).toFixed(1)}%` : "0.0%" }], error };
+      return { rows: data ?? [], error };
     }
     case "registrations": { const { data, error } = await applyDate(supabaseAdmin.from("members").select("join_date,member_id,full_name,mobile_number,status").order("join_date", { ascending: false }).limit(5000), "join_date", filters); return { rows: data ?? [], error }; }
     case "memberships": { const { data, error } = await supabaseAdmin.from("members").select("member_id,full_name,status,join_date").order("full_name").limit(5000); return { rows: data ?? [], error }; }
