@@ -16,13 +16,14 @@ export default async function SettingsPage() {
           <h1 className="font-display mt-2 text-3xl font-black tracking-[-0.055em] sm:text-4xl">Settings</h1>
           <p className="mt-2 max-w-xl text-sm font-medium text-[#6c7773]">Gym contact details and tax configuration used on every generated invoice and receipt.</p>
         </div>
-        <Link className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#e5e9e5] bg-white px-4 py-3 text-sm font-extrabold text-[#0f1816]" href="/settings/whatsapp">
-          <MessageCircle size={16} /> WhatsApp settings
-        </Link>
       </div>
 
-      <SettingsForm settings={settings} />
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section aria-label="Other settings" className="mt-6">
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <h2 className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#89938f]">More settings</h2>
+          <p className="text-xs font-medium text-[#89938f]">Manage access, communications, and system tools.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <SettingsLink href="/settings/admin-access" icon={<ShieldCheck size={18}/>} title="Super-admin access" text="Create another owner account" />
         <SettingsLink href="/settings/whatsapp" icon={<MessageCircle size={18}/>} title="WhatsApp" text="Configuration & templates" />
         <SettingsLink href="/settings/staff" icon={<Users size={18}/>} title="Staff & roles" text="Directory and access roles" />
@@ -30,9 +31,12 @@ export default async function SettingsPage() {
         <SettingsLink href="/settings/member-login-issues" icon={<KeyRound size={18}/>} title="Member login issues" text="Troubleshoot portal access" />
         <SettingsLink href="/settings/data-export" icon={<Archive size={18}/>} title="Data backup" text="Download operational records" />
         <SettingsLink href="/settings/legacy-import" icon={<UploadCloud size={18}/>} title="Legacy import" text="Import old GymMaster data" />
-      </div>
+        </div>
+      </section>
+
+      <SettingsForm settings={settings} />
     </div>
   );
 }
 
-function SettingsLink({ href, icon, title, text }: { href: string; icon: React.ReactNode; title: string; text: string }) { return <Link href={href} className="rounded-2xl border border-[#e5e9e5] bg-white p-4 transition hover:border-[#a9c88b]"><div className="text-[#699238]">{icon}</div><p className="mt-3 text-sm font-extrabold">{title}</p><p className="mt-1 text-xs font-medium text-[#89938f]">{text}</p></Link>; }
+function SettingsLink({ href, icon, title, text }: { href: string; icon: React.ReactNode; title: string; text: string }) { return <Link href={href} className="rounded-2xl border border-[#e5e9e5] bg-white p-4 transition hover:border-[#a9c88b] hover:shadow-[0_8px_24px_rgba(17,28,25,.04)]"><div className="text-[#699238]">{icon}</div><p className="mt-3 text-sm font-extrabold">{title}</p><p className="mt-1 text-xs font-medium text-[#89938f]">{text}</p></Link>; }
