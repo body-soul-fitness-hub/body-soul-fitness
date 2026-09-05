@@ -7,6 +7,9 @@ export type DashboardAnalytics = {
   todayCheckins: number;
   membersInside: number;
   averageVisitMinutes: number | null;
+  weeklyCheckins: number[];
+  weeklyLabels: string[];
+  outstandingBalance: number;
   expiringThisWeek: number;
   risk: { high: number; medium: number; low: number };
   insights: Array<{ title: string; text: string }>;
@@ -63,6 +66,15 @@ export async function dashboardAnalytics(): Promise<DashboardAnalytics> {
   const low = Math.max(0, activeMembers - high - medium);
   const expiringThisWeek = [...currentSubscriptions.values()].filter((subscription) => subscription.end_date && subscription.end_date <= weekEnd).length;
   const outstandingBalance = (invoicesResult.data ?? []).reduce((sum, invoice) => sum + Number(invoice.balance_due ?? 0), 0);
+  const weekDays = Array.from({ length: 7 }, (_, index) => dayInIndia(index - 6));
+  const weeklyCountByDay = new Map(weekDays.map((day) => [day, 0]));
+  for (const checkin of recentCheckinsResult.data ?? []) {
+    const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" })
+      .formatToParts(new Date(checkin.checked_in_at))
+      .reduce<Record<string, string>>((result, part) => ({ ...result, [part.type]: part.value }), {});
+    const key = `${day.year}-${day.month}-${day.day}`;
+    if (weeklyCountByDay.has(key)) weeklyCountByDay.set(key, (weeklyCountByDay.get(key) ?? 0) + 1);
+  }
   const attendanceByHour = new Map<number, number>();
   for (const checkin of recentCheckinsResult.data ?? []) {
     const hour = Number(new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", hourCycle: "h23" }).format(new Date(checkin.checked_in_at)));
@@ -77,7 +89,9 @@ export async function dashboardAnalytics(): Promise<DashboardAnalytics> {
 
   return {
     generatedAt: now.toISOString(), todayCheckins: todayCheckins.length,
-    membersInside: todayCheckins.filter((checkin) => !checkin.checked_out_at).length,
+    membersInside: todayCheckins.filter((checkin) => !checkin.checked_out_at).length, outstandingBalance,
+    weeklyCheckins: weekDays.map((day) => weeklyCountByDay.get(day) ?? 0),
+    weeklyLabels: weekDays.map((day) => new Intl.DateTimeFormat("en-IN", { weekday: "short", timeZone: "Asia/Kolkata" }).format(new Date(`${day}T12:00:00+05:30`))),
     averageVisitMinutes, expiringThisWeek, risk: { high, medium, low }, insights,
     suggestedAction: high ? { count: high, text: `${high} member${high === 1 ? "" : "s"} need attention because of low attendance, an upcoming expiry, or an unpaid balance.` } : null,
   };
